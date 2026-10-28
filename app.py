@@ -1,6 +1,6 @@
 import os, uuid, re, datetime as dt, requests
 from functools import wraps
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify
+from flask import Flask, send_from_directory, render_template, request, redirect, url_for, session, flash, abort, jsonify
 from markupsafe import Markup, escape
 from werkzeug.security import generate_password_hash, check_password_hash
 from supabase import create_client
@@ -276,7 +276,7 @@ def delete_account(u):
 def send_email(to, subject, html):
     if not E("RESEND_API_KEY"): return
     requests.post("https://api.resend.com/emails", headers={"Authorization": "Bearer " + E("RESEND_API_KEY")}, timeout=15,
-        json={"from": E("MAIL_FROM", "Nuru ya Siku <onboarding@resend.dev>"), "to": [to], "subject": subject, "html": html})
+        json={"from": E("MAIL_FROM", "NUYAS <onboarding@resend.dev>"), "to": [to], "subject": subject, "html": html})
 
 def send_whatsapp(phone, text):
     if not (E("WA_TOKEN") and E("WA_PHONE_ID")): return
@@ -296,7 +296,7 @@ def cron(kind):
     for x in us:
         try:
             if x["notify_email"]:
-                send_email(x["email"], f"Adhkar za {kind}", f'<div style="font-family:sans-serif;max-width:520px"><p>Salaam {escape(x["name"])},</p><p style="font-size:26px;direction:rtl;text-align:right">{escape(a["arabic"])}</p><p>{escape(a["swahili"])}</p><p><a href="{SITE}/dashboard">Fungua Nuru ya Siku</a></p><p style="color:#777;font-size:12px">Zima ukumbusho kwenye Wasifu.</p></div>')
+                send_email(x["email"], f"Adhkar za {kind}", f'<div style="font-family:sans-serif;max-width:520px"><p>Salaam {escape(x["name"])},</p><p style="font-size:26px;direction:rtl;text-align:right">{escape(a["arabic"])}</p><p>{escape(a["swahili"])}</p><p><a href="{SITE}/dashboard">Fungua NUYAS</a></p><p style="color:#777;font-size:12px">Zima ukumbusho kwenye Wasifu.</p></div>')
             if x["notify_whatsapp"] and x["phone"]:
                 send_whatsapp(x["phone"], f'{a["arabic"]} - {a["swahili"]}')
             sent += 1
@@ -328,3 +328,18 @@ def admin_add(u, kind):
         "audio_url": f.get("audio_url") or None, "position": int(f.get("position") or 1), "is_free": f.get("is_free") == "on"}).execute()
     else: abort(400)
     flash("Imeongezwa."); return redirect(url_for("admin"))
+
+
+# ---------- PWA ----------
+@app.route("/sw.js")
+def sw():
+    r = send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript")
+    r.headers["Cache-Control"] = "no-cache"; r.headers["Service-Worker-Allowed"] = "/"; return r
+
+@app.route("/manifest.webmanifest")
+def manifest():
+    return send_from_directory(app.static_folder, "manifest.webmanifest", mimetype="application/manifest+json")
+
+@app.route("/offline")
+def offline():
+    return render_template("offline.html")

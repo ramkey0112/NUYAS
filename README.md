@@ -1,25 +1,29 @@
-# Nuru ya Siku v2 (Flask + Supabase + Vercel)
+# NUYAS (Flask + Supabase + Vercel)
+Adhkar, nyakati za swala, kozi na jamii kwa Kiswahili. Inasakinishwa kwenye simu kama app (PWA).
+Matoleo: Flask 3.1.3, Werkzeug 3.1.8, supabase 2.33.0, requests 2.33.1, Python 3.12.
 
 ## 1. Supabase
-SQL Editor: endesha `schema.sql`, kisha `migration_v2.sql`. Nakili Project URL na service_role key.
+Tengeneza project. SQL Editor: endesha `schema.sql`, kisha `migration_v2.sql`.
+Project Settings > API: nakili **Project URL** na **service_role / secret key** (siri, isiende GitHub).
 
-## 2. Mazingira (.env.example -> Vercel Environment Variables)
-Zote zinahitajika kwenye Vercel. `SITE_URL` iwe kiungo chako cha Vercel.
+## 2. GitHub
+`git init && git add . && git commit -m "NUYAS" && git branch -M main`
+`git remote add origin https://github.com/JINA/nuyas.git && git push -u origin main`
 
-## 3. ClickPesa
-- Tengeneza Application kwenye ClickPesa dashboard, chukua Client ID na API Key.
-- Weka `CLICKPESA_CLIENT_ID` na `CLICKPESA_API_KEY`.
-- (Hiari) Webhook URL: `https://SITE/webhooks/clickpesa`. App hujihakiki yenyewe na ClickPesa, hivyo webhook si lazima.
-- Malipo: mtumiaji anaweka namba ya simu, anapokea USSD push, ukurasa unachunguza hali hadi ikamilike.
+## 3. Vercel
+Add New > Project > chagua repo. Kabla ya Deploy, weka Environment Variables (angalia `.env.example`):
+`SECRET_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `ADMIN_EMAILS`, `PRICE_TZS`, `PAY_NUMBER`, `PAY_NAME`, `SITE_URL`, `CRON_SECRET`.
+Hiari: `CLICKPESA_*`, `RESEND_API_KEY`, `MAIL_FROM`, `WA_TOKEN`, `WA_PHONE_ID`, `WA_TEMPLATE`.
+Baada ya deploy ya kwanza, weka `SITE_URL` halisi kisha Redeploy. Jisajili kwa barua pepe ya `ADMIN_EMAILS` ili uwe admin.
 
-## 4. Ukumbusho (Vercel Cron)
-`vercel.json` ina kazi mbili: 06:00 (asubuhi) na 18:00 (jioni) saa za EAT. Weka `CRON_SECRET` (Vercel huituma kama Bearer token).
-- Email: fungua akaunti Resend, weka `RESEND_API_KEY` na `MAIL_FROM` (domain yako).
-- WhatsApp: Meta WhatsApp Cloud API. Tengeneza template (lugha sw) yenye kigezo kimoja {{1}}, kiitwe `adhkar_reminder`, ipitishwe na Meta, kisha weka `WA_TOKEN` na `WA_PHONE_ID`.
-- Vercel Hobby inaruhusu cron za mara moja kwa siku tu (inatosha).
+## 4. ClickPesa
+Weka `CLICKPESA_CLIENT_ID` na `CLICKPESA_API_KEY`. Webhook (hiari): `https://SITE/webhooks/clickpesa`.
 
-## 5. Deploy
-`git init && git add . && git commit -m v2`, push GitHub, import Vercel. Weka `ADMIN_EMAILS`, jisajili kwa barua pepe hiyo.
+## 5. Ukumbusho (Vercel Cron)
+`vercel.json`: 06:00 na 18:00 EAT. Weka `CRON_SECRET`. Email kupitia Resend; WhatsApp kupitia Meta Cloud API (template `adhkar_reminder`, lugha sw, kigezo {{1}}).
+
+## 6. Kusakinisha kwenye simu (PWA)
+Fungua tovuti kwa Chrome (Android): menyu > "Install app". Safari (iPhone): Share > "Add to Home Screen". Ikoni iko `static/`.
 
 ## Kabla ya kuzindua
 Sheria na masharti, faragha, na maudhui ya adhkar/kozi vihakikiwe na mwanasheria na mwalimu.

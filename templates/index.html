@@ -1,8 +1,13 @@
 {% extends "base.html" %}{% block c %}
-<section class="hero"><h1>Adhkar, nyakati za swala, kozi na jamii. Kila siku, kwa Kiswahili.</h1>
+<section class="hero"><span class="badge">{{ icon('moon',14) }} Kwa Kiswahili, kila siku</span>
+<h1>Adhkar, nyakati za swala, kozi na jamii, <em>mahali pamoja.</em></h1>
 <p class="muted">Pokea adhkar kwa email au WhatsApp, soma kozi, na ungana na ndugu waumini. Jisajili bure; uanachama ni TSh {{ PRICE }} kwa mwezi.</p>
 <p><a class="btn" href="/register">Anza bure</a> <a class="btn ghost" href="/login">Nina akaunti</a></p></section>
-<div class="card"><p class="ar">سُبْحَانَ اللَّهِ وَبِحَمْدِهِ</p><p>Ametakasika Allah na kuhimidiwa Yeye.</p></div>
-<div class="card"><div class="chk">{{ icon('bell') }}&nbsp;Ukumbusho wa kila siku asubuhi na jioni</div><div class="chk">{{ icon('clock') }}&nbsp;Nyakati za swala za mji wako</div>
-<div class="chk">{{ icon('book') }}&nbsp;Kozi za mwanzo hadi za kina</div><div class="chk">{{ icon('users') }}&nbsp;Jamii ya kuchati na kusaidiana</div>
-<div class="chk">{{ icon('card') }}&nbsp;Lipa kwa M-Pesa, Tigo Pesa, Airtel Money au HaloPesa</div></div>{% endblock %}
+<div class="card"><p class="ar">سُبْحَانَ اللَّهِ وَبِحَمْدِهِ</p><p class="muted" style="margin:0">Ametakasika Allah na kuhimidiwa Yeye.</p></div>
+<div class="feat">
+<div class="card">{{ icon('bell') }}<b>Ukumbusho</b><span>Adhkar asubuhi na jioni kila siku</span></div>
+<div class="card">{{ icon('clock') }}<b>Nyakati za swala</b><span>Za mji wako, papo hapo</span></div>
+<div class="card">{{ icon('book') }}<b>Kozi</b><span>Kutoka mwanzo hadi za kina</span></div>
+<div class="card">{{ icon('users') }}<b>Jamii</b><span>Chati na kusaidiana</span></div>
+<div class="card">{{ icon('card') }}<b>Lipa kwa simu</b><span>M-Pesa, Tigo Pesa, Airtel Money, HaloPesa</span></div>
+</div>{% endblock %}
