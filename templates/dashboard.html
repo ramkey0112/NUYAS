@@ -1,115 +1,224 @@
 {% extends "base.html" %}{% block c %}
-<div class="welcome">
-  <small>Salaam</small>
-  <h2>{{ u.name }}</h2>
-  {% if u.premium %}
-    <p><span class="tag">{{ icon('check',14) }} Mwanachama hadi {{ u.until.strftime("%d/%m/%Y") }}</span></p>
-  {% else %}
-    <p><span class="tag lock">{{ icon('lock',14) }} Akaunti ya bure</span> <a href="/pay">Jiunge kufungua kozi zote</a></p>
-  {% endif %}
-</div>
+<style>
+.dx{--gx:var(--g,#16a36a);--cx:var(--card,#fff);--lx:var(--line,rgba(128,128,128,.22));--gold:#c9a24b;
+  font-size:12.5px;line-height:1.55;display:flex;flex-direction:column;gap:12px;padding-bottom:8px}
+.dx *{box-sizing:border-box}
+.dx p{margin:0}
+.dx .muted{font-size:11px;opacity:.68}
+.dx .sec{display:flex;align-items:center;justify-content:space-between;margin:6px 2px -2px}
+.dx .sec h3{margin:0;font-size:13px;font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:8px}
+.dx .sec h3::before{content:"";width:3px;height:13px;border-radius:3px;background:linear-gradient(var(--gx),var(--gold))}
+.dx .sec span{font-size:10.5px;opacity:.6}
+.dx .box{background:var(--cx);border:1px solid var(--lx);border-radius:16px;padding:13px 14px;margin:0;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px -10px rgba(0,0,0,.18)}
 
-{% if banners %}
-<div class="banner-slider card" id="bannerSlider" style="padding:0;overflow:hidden;position:relative;margin:0 0 14px">
-  {% for b in banners %}
-  <div class="banner-slide" style="display:{% if loop.first %}block{% else %}none{% endif %};position:relative">
-    {% if b.link_url %}<a href="{{ b.link_url }}">{% endif %}
-    <img src="{{ b.image_url }}" alt="{{ b.title or 'Banner' }}" style="width:100%;max-height:180px;object-fit:cover;display:block">
-    {% if b.title %}<div style="position:absolute;bottom:0;left:0;right:0;padding:10px 14px;background:linear-gradient(transparent,rgba(0,0,0,.65));color:#fff;font-weight:600;font-size:14px">{{ b.title }}</div>{% endif %}
-    {% if b.link_url %}</a>{% endif %}
+/* Karibu */
+.dx .hero{position:relative;overflow:hidden;border-radius:18px;padding:16px 16px 15px;color:#fff;
+  background:radial-gradient(120% 140% at 100% 0%,rgba(201,162,75,.38),transparent 55%),linear-gradient(135deg,#0d5c43,#0a3d2e 70%);
+  box-shadow:0 10px 24px -12px rgba(10,61,46,.7)}
+.dx .hero::after{content:"";position:absolute;right:-26px;top:-26px;width:110px;height:110px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.14);box-shadow:0 0 0 14px rgba(255,255,255,.04),0 0 0 28px rgba(255,255,255,.03)}
+.dx .hero small{display:block;font-size:10.5px;opacity:.8;letter-spacing:.3px}
+.dx .hero h2{margin:1px 0 9px;font-size:19px;font-weight:700;line-height:1.2;position:relative;z-index:1}
+.dx .chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;padding:4px 10px;border-radius:99px;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:#fff;position:relative;z-index:1}
+.dx .chip.gold{background:rgba(201,162,75,.22);border-color:rgba(201,162,75,.55);color:#f6e3b0}
+.dx .hero a.join{display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:10.5px;font-weight:700;color:#0a3d2e;
+  background:linear-gradient(135deg,#f3dc9a,#c9a24b);padding:4px 11px;border-radius:99px;text-decoration:none;position:relative;z-index:1}
+
+/* Mabango */
+.dx .bn{position:relative;overflow:hidden;border-radius:16px;border:1px solid var(--lx);background:var(--cx);
+  box-shadow:0 6px 18px -10px rgba(0,0,0,.25)}
+.dx .bn .s{display:none;position:relative}
+.dx .bn .s.on{display:block;animation:bf .5s ease}
+@keyframes bf{from{opacity:.2}to{opacity:1}}
+.dx .bn img{width:100%;height:150px;object-fit:cover;display:block}
+.dx .bn .t{position:absolute;inset:auto 0 0 0;padding:22px 14px 9px;background:linear-gradient(transparent,rgba(0,0,0,.72));
+  color:#fff;font-weight:600;font-size:12px}
+.dx .bn .dots{position:absolute;bottom:9px;right:11px;display:flex;gap:4px;z-index:2}
+.dx .bn .dot{width:5px;height:5px;border-radius:99px;background:rgba(255,255,255,.45);cursor:pointer;transition:all .25s}
+.dx .bn .dot.on{width:15px;background:#fff}
+
+/* Viungo */
+.dx .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dx .lnk{display:flex;flex-direction:column;gap:9px;text-decoration:none;color:inherit;background:var(--cx);border:1px solid var(--lx);
+  border-radius:16px;padding:13px;position:relative;transition:transform .15s,border-color .15s;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px -10px rgba(0,0,0,.18)}
+.dx .lnk:active{transform:scale(.98)}
+.dx .lnk:hover{border-color:color-mix(in srgb,var(--gx) 55%,var(--lx))}
+.dx .ico{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:var(--gx);
+  background:color-mix(in srgb,var(--gx) 14%,transparent)}
+.dx .lnk.q .ico{color:#a9801f;background:rgba(201,162,75,.18)}
+.dx .lnk b{font-size:13px;display:block;line-height:1.25}
+.dx .lnk p{font-size:10.5px;opacity:.65;margin-top:3px;line-height:1.45}
+.dx .lnk .go{position:absolute;top:12px;right:13px;font-size:15px;opacity:.4;line-height:1}
+
+/* Nyakati */
+.dx .ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.dx .ph b{font-size:12.5px;display:flex;align-items:center;gap:7px}
+.dx .ph b::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px rgba(201,162,75,.2)}
+.dx .ph span{font-size:10.5px;opacity:.65;padding:2px 9px;border-radius:99px;border:1px solid var(--lx)}
+.dx .times{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:0!important}
+.dx .times>div{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 4px;border-radius:12px;font-size:10.5px;
+  background:color-mix(in srgb,var(--gx) 7%,transparent);border:1px solid color-mix(in srgb,var(--gx) 14%,transparent);
+  text-align:center;opacity:.95}
+.dx .times>div b{font-size:14px;font-weight:700;letter-spacing:.2px;font-variant-numeric:tabular-nums}
+
+/* Tasbih */
+.dx .tsb{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.dx .tsb .top{width:100%;display:flex;align-items:center;justify-content:space-between}
+.dx .tsb .top b{font-size:12.5px}
+.dx .tsb .goalp{font-size:10.5px;padding:2px 10px;border-radius:99px;background:rgba(201,162,75,.16);color:#a9801f;font-weight:600}
+.dx .ringw{position:relative;width:132px;height:132px}
+.dx .ringw svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.dx .ringw circle{fill:none;stroke-width:5;stroke-linecap:round}
+.dx .ringw .bg{stroke:color-mix(in srgb,var(--gx) 14%,transparent)}
+.dx .ringw .fg{stroke:var(--gx);transition:stroke-dashoffset .25s ease}
+.dx .ringw button.big{position:absolute;inset:11px;width:auto;height:auto;border-radius:50%;border:0;cursor:pointer;
+  display:grid;place-items:center;color:#fff;font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;
+  background:radial-gradient(circle at 30% 25%,#1c8a64,#0a3d2e);box-shadow:0 8px 18px -8px rgba(10,61,46,.75),inset 0 1px 0 rgba(255,255,255,.2);
+  transition:transform .08s;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+.dx .ringw button.big:active{transform:scale(.94)}
+.dx .tsb .acts{display:flex;gap:8px}
+.dx .tsb .acts button{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:6px 13px;border-radius:99px;
+  background:transparent;color:inherit;border:1px solid var(--lx);cursor:pointer;width:auto;margin:0}
+.dx .tsb .acts button:active{background:color-mix(in srgb,var(--gx) 10%,transparent)}
+
+/* Adhkar */
+.dx .ad{padding:13px 14px 11px;position:relative}
+.dx .ad::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:linear-gradient(var(--gx),var(--gold))}
+.dx .ad .ar{font-size:20px;line-height:2.05;text-align:right;direction:rtl;margin-bottom:8px;padding-bottom:9px;border-bottom:1px dashed var(--lx)}
+.dx .ad .sw{font-size:12px;line-height:1.65}
+.dx .ad .src{font-size:10px;opacity:.6;margin-top:7px;display:inline-block;padding:1px 8px;border-radius:99px;background:color-mix(in srgb,var(--gold) 14%,transparent)}
+.dx .empty{text-align:center;padding:18px;font-size:11px;opacity:.65}
+
+@media (prefers-reduced-motion:reduce){.dx *{animation:none!important;transition:none!important}}
+</style>
+
+<div class="dx">
+
+  <div class="hero">
+    <small>Salaam</small>
+    <h2>{{ u.name }}</h2>
+    {% if u.premium %}
+      <span class="chip gold">{{ icon('check',13) }} Mwanachama hadi {{ u.until.strftime("%d/%m/%Y") }}</span>
+    {% else %}
+      <span class="chip">{{ icon('lock',13) }} Akaunti ya bure</span>
+      <a class="join" href="/pay">Jiunge kufungua kozi zote</a>
+    {% endif %}
   </div>
-  {% endfor %}
-  {% if banners|length > 1 %}
-  <div style="position:absolute;bottom:8px;right:10px;display:flex;gap:5px;z-index:2">
+
+  {% if banners %}
+  <div class="bn" id="bannerSlider">
     {% for b in banners %}
-    <span class="dot" data-i="{{ loop.index0 }}" style="width:7px;height:7px;border-radius:50%;background:{% if loop.first %}#fff{% else %}rgba(255,255,255,.4){% endif %};cursor:pointer"></span>
+    <div class="s banner-slide{% if loop.first %} on{% endif %}">
+      {% if b.link_url %}<a href="{{ b.link_url }}">{% endif %}
+      <img src="{{ b.image_url }}" alt="{{ b.title or 'Banner' }}">
+      {% if b.title %}<div class="t">{{ b.title }}</div>{% endif %}
+      {% if b.link_url %}</a>{% endif %}
+    </div>
     {% endfor %}
+    {% if banners|length > 1 %}
+    <div class="dots">
+      {% for b in banners %}<span class="dot{% if loop.first %} on{% endif %}" data-i="{{ loop.index0 }}"></span>{% endfor %}
+    </div>
+    {% endif %}
   </div>
+  <script>
+  (function(){
+    const slides=[...document.querySelectorAll('#bannerSlider .banner-slide')];
+    const dots=[...document.querySelectorAll('#bannerSlider .dot')];
+    if(slides.length<2) return;
+    let i=0, timer;
+    function go(k){
+      slides[i].classList.remove('on'); if(dots[i]) dots[i].classList.remove('on');
+      i=k; slides[i].classList.add('on'); if(dots[i]) dots[i].classList.add('on');
+    }
+    function start(){ timer=setInterval(()=>go((i+1)%slides.length),4000) }
+    dots.forEach(d=>d.onclick=()=>{ clearInterval(timer); go(+d.dataset.i); start() });
+    start();
+  })();
+  </script>
   {% endif %}
-</div>
-<script>
-(function(){
-  const slides=[...document.querySelectorAll('.banner-slide')];
-  const dots=[...document.querySelectorAll('.dot')];
-  if(slides.length<2) return;
-  let i=0;
-  setInterval(()=>{
-    slides[i].style.display='none';
-    if(dots[i]) dots[i].style.background='rgba(255,255,255,.4)';
-    i=(i+1)%slides.length;
-    slides[i].style.display='block';
-    if(dots[i]) dots[i].style.background='#fff';
-  },2000);
-  dots.forEach(d=>d.onclick=()=>{
-    slides[i].style.display='none';
-    if(dots[i]) dots[i].style.background='rgba(255,255,255,.4)';
-    i=+d.dataset.i;
-    slides[i].style.display='block';
-    d.style.background='#fff';
-  });
-})();
-</script>
-{% endif %}
 
-<a href="/quran" style="text-decoration:none;color:inherit">
-  <div class="card" style="background:linear-gradient(135deg,color-mix(in srgb,var(--g) 12%,var(--card)),var(--card));border-color:color-mix(in srgb,var(--g) 35%,var(--line))">
-    <div class="row">
+  <div class="grid2">
+    <a href="/quran" class="lnk">
+      <span class="ico">{{ icon('book',18) }}</span>
       <div>
-        <b style="font-size:16px">{{ icon('book',18) }} Qurani Tukufu</b>
-        <p class="muted" style="margin:4px 0 0">Soma Kiarabu + tafsiri Kiswahili · sikiliza Kiarabu</p>
+        <b>Qurani Tukufu</b>
+        <p>Soma Kiarabu na tafsiri ya Kiswahili, sikiliza Kiarabu</p>
       </div>
-      <span class="tag">Fungua</span>
+      <span class="go">›</span>
+    </a>
+    <a href="/maswali" class="lnk q">
+      <span class="ico">{{ icon('help',18) }}</span>
+      <div>
+        <b>Maswali na Majibu</b>
+        <p>Jibu maswali ya admin na channel</p>
+      </div>
+      <span class="go">›</span>
+    </a>
+  </div>
+
+  <div class="box">
+    <div class="ph">
+      <b>Nyakati za swala</b>
+      <span>{{ u.city }}</span>
+    </div>
+    {% if times %}
+      <div class="times">
+        {% for k,v in times.items() %}<div>{{ k }}<b>{{ v }}</b></div>{% endfor %}
+      </div>
+    {% else %}
+      <p class="muted">Nyakati hazipatikani sasa. Jaribu tena baadaye.</p>
+    {% endif %}
+  </div>
+
+  <div class="box tsb tasbih">
+    <div class="top">
+      <b>Tasbih</b>
+      <span class="goalp">Lengo: <span id="goal">33</span></span>
+    </div>
+    <div class="ringw">
+      <svg viewBox="0 0 132 132" aria-hidden="true">
+        <circle class="bg" cx="66" cy="66" r="60"/>
+        <circle class="fg" id="ring" cx="66" cy="66" r="60" stroke-dasharray="377" stroke-dashoffset="377"/>
+      </svg>
+      <button class="big" id="tap" aria-label="Hesabu"><span id="n">0</span></button>
+    </div>
+    <div class="acts">
+      <button class="ghost" id="rst">{{ icon('refresh',14) }} Anza upya</button>
+      <button class="ghost" id="g">Badili lengo</button>
     </div>
   </div>
-</a>
 
-<a href="/maswali" style="text-decoration:none;color:inherit">
-  <div class="card">
-    <div class="row">
-      <div>
-        <b style="font-size:16px">{{ icon('help',18) }} Maswali na Majibu</b>
-        <p class="muted" style="margin:4px 0 0">Jibu maswali ya admin · channel</p>
-      </div>
-      <span class="tag">Fungua</span>
-    </div>
+  <div class="sec">
+    <h3>Adhkar za {{ kind }}</h3>
   </div>
-</a>
-
-<div class="card">
-  <b>Nyakati za swala, {{ u.city }}</b>
-  {% if times %}
-    <div class="times" style="margin-top:10px">
-      {% for k,v in times.items() %}<div>{{ k }}<b>{{ v }}</b></div>{% endfor %}
+  {% for a in items %}
+    <div class="box ad">
+      <p class="ar">{{ a.arabic }}</p>
+      <p class="sw">{{ a.swahili }}</p>
+      {% if a.source %}<span class="src">{{ a.source }}</span>{% endif %}
     </div>
   {% else %}
-    <p class="muted">Nyakati hazipatikani sasa. Jaribu tena baadaye.</p>
-  {% endif %}
-</div>
+    <div class="box empty">Hakuna adhkar bado.</div>
+  {% endfor %}
 
-<div class="card tasbih">
-  <b>Tasbih</b>
-  <div class="muted">Lengo: <span id="goal">33</span></div>
-  <button class="big" id="tap" aria-label="Hesabu"><span id="n" style="margin:auto">0</span></button>
-  <button class="ghost" id="rst">{{ icon('refresh',18) }} Anza upya</button>
-  <button class="ghost" id="g">Badili lengo</button>
 </div>
-
-<h3>Adhkar za {{ kind }}</h3>
-{% for a in items %}
-  <div class="card">
-    <p class="ar">{{ a.arabic }}</p>
-    <p>{{ a.swahili }}</p>
-    <p class="muted">{{ a.source }}</p>
-  </div>
-{% else %}
-  <p class="muted">Hakuna adhkar bado.</p>
-{% endfor %}
 
 <script>
 let n=0, goal=33;
 try{ n=+localStorage.getItem('tn')||0; goal=+localStorage.getItem('tg')||33 }catch(e){}
-const N=document.getElementById('n'), G=document.getElementById('goal');
-function show(){ N.textContent=n; G.textContent=goal; try{localStorage.setItem('tn',n);localStorage.setItem('tg',goal)}catch(e){} }
+const N=document.getElementById('n'), G=document.getElementById('goal'), R=document.getElementById('ring');
+const C=2*Math.PI*60;
+R.style.strokeDasharray=C;
+function show(){
+  N.textContent=n; G.textContent=goal;
+  const p=n===0?0:((n-1)%goal+1)/goal;
+  R.style.strokeDashoffset=C*(1-p);
+  try{localStorage.setItem('tn',n);localStorage.setItem('tg',goal)}catch(e){}
+}
 document.getElementById('tap').onclick=()=>{ n++; if(navigator.vibrate) navigator.vibrate(n%goal==0?[60,40,60]:15); show() };
 document.getElementById('rst').onclick=()=>{ n=0; show() };
 document.getElementById('g').onclick=()=>{ goal = goal==33 ? 100 : goal==100 ? 10 : 33; show() };
