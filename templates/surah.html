@@ -7,14 +7,10 @@
     <p class="muted">{{ surah.englishNameTranslation }} · {{ surah.numberOfAyahs }} aya · {{ surah.revelationType }}</p>
   </div>
 
-  <div class="q-controls">
-    <button type="button" id="fontDown" aria-label="Punguza herufi">A−</button>
-    <button type="button" id="fontUp" aria-label="Ongeza herufi">A+</button>
-  </div>
-
   <div class="player-bar card">
     <button id="playAll" class="btn">{{ icon('play',16) }} <span>Sikiliza yote</span></button>
     <button id="stopAll" class="ghost" style="display:none">{{ icon('x',16) }} Simamisha</button>
+    <button id="toggleTr" class="ghost" type="button">{{ icon('book',16) }} <span id="trLabel">Tafsiri</span></button>
     <span class="muted" id="nowPlaying" style="font-size:13px"></span>
   </div>
 </div>
@@ -34,15 +30,9 @@
   </div>
   <p class="ar ayah-ar">{{ a.text }}</p>
   {% if a.translation %}
-  <div class="ayah-tr">
-    <div class="ayah-tr-label">Tafsiri</div>
+  <div class="ayah-tr tr-block" hidden>
+    <div class="ayah-tr-label">Tafsiri (Kiswahili)</div>
     {{ a.translation }}
-  </div>
-  {% endif %}
-  {% if a.translation_en and a.translation_en != a.translation %}
-  <div class="ayah-tr" style="border-top:none;padding-top:4px;opacity:.85">
-    <div class="ayah-tr-label" style="color:var(--mut)">English</div>
-    {{ a.translation_en }}
   </div>
   {% endif %}
 </div>
@@ -56,20 +46,22 @@ const audio = document.getElementById('audio');
 const playAllBtn = document.getElementById('playAll');
 const stopAllBtn = document.getElementById('stopAll');
 const nowPlaying = document.getElementById('nowPlaying');
-const ayahsEl = document.getElementById('ayahs');
+const toggleTr = document.getElementById('toggleTr');
+const trLabel = document.getElementById('trLabel');
 let queue = [], qIdx = -1, currentBtn = null;
+let showTr = localStorage.getItem('showTafsir') === '1';
 
 const CDN = 'https://cdn.islamic.network/quran/audio/128/ar.alafasy/';
 
-/* Font size */
-let fontSize = parseInt(localStorage.getItem('quranFont') || '28', 10);
-function applyFont(){
-  document.querySelectorAll('.ayah-ar').forEach(el => el.style.fontSize = fontSize + 'px');
-  localStorage.setItem('quranFont', fontSize);
+function applyTr(){
+  document.querySelectorAll('.tr-block').forEach(el => {
+    el.hidden = !showTr;
+  });
+  trLabel.textContent = showTr ? 'Ficha tafsiri' : 'Tafsiri';
+  localStorage.setItem('showTafsir', showTr ? '1' : '0');
 }
-applyFont();
-document.getElementById('fontUp').onclick = () => { fontSize = Math.min(42, fontSize + 2); applyFont(); };
-document.getElementById('fontDown').onclick = () => { fontSize = Math.max(20, fontSize - 2); applyFont(); };
+applyTr();
+toggleTr.onclick = () => { showTr = !showTr; applyTr(); };
 
 function setPlaying(btn, on){
   if(currentBtn) currentBtn.classList.remove('playing');

@@ -351,33 +351,20 @@ def surah(u, n):
         abort(404)
     try:
         ar = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/quran-uthmani", timeout=12).json()["data"]
-        # Swahili translation
+        # Tafsiri ya Kiswahili (Ali Muhsin Al-Barwani)
         sw_map = {}
-        for ed in ("sw.abubakar", "sw.barwani"):
-            try:
-                tr = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/{ed}", timeout=10).json()["data"]
-                sw_map = {a["numberInSurah"]: a["text"] for a in tr["ayahs"]}
-                if sw_map:
-                    break
-            except Exception:
-                continue
-        # English fallback / secondary
-        en_map = {}
         try:
-            tr = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/en.sahih", timeout=10).json()["data"]
-            en_map = {a["numberInSurah"]: a["text"] for a in tr["ayahs"]}
+            tr = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/sw.barwani", timeout=12).json()["data"]
+            sw_map = {a["numberInSurah"]: a["text"] for a in tr["ayahs"]}
         except Exception:
             pass
         ayahs = []
         for a in ar["ayahs"]:
-            sw = sw_map.get(a["numberInSurah"], "")
-            en = en_map.get(a["numberInSurah"], "")
             ayahs.append({
                 "number": a["number"],
                 "numberInSurah": a["numberInSurah"],
                 "text": a["text"],
-                "translation": sw or en,
-                "translation_en": en if sw else "",
+                "translation": sw_map.get(a["numberInSurah"], ""),
             })
         surah_meta = {
             "number": ar["number"],

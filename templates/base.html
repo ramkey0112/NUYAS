@@ -2,7 +2,7 @@
 <html lang="sw">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#064e3b">
 <meta name="color-scheme" content="light dark">
 <title>{% block t %}NUYAS{% endblock %}</title>
@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;500;600;700;800&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
 <style>
 /* ========== DESIGN SYSTEM ========== */
 :root {
@@ -47,7 +47,7 @@
   --sh-lg: 0 4px 6px rgba(6,78,59,.03), 0 16px 40px -12px rgba(6,78,59,.14);
   --blur: saturate(1.4) blur(20px);
   --font: "Inter", system-ui, -apple-system, sans-serif;
-  --font-ar: "Amiri", "Traditional Arabic", serif;
+  --font-ar: "Scheherazade New", "Amiri", "Traditional Arabic", serif;
   --ease: cubic-bezier(.22,1,.36,1);
 }
 
@@ -399,7 +399,7 @@ html[data-theme="dark"] .anum { color: var(--g) }
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--g) 20%, transparent);
 }
 .ayah-ar {
-  font-size: 1.75rem; line-height: 2.1;
+  font-size: 1.9rem; line-height: 2.15;
   margin: 4px 0 10px; color: var(--ink);
 }
 .ayah-tr {
@@ -553,7 +553,7 @@ html[data-theme="dark"] .anum { color: var(--g) }
   const html = document.documentElement;
   const stored = localStorage.getItem('theme');
   if(stored) html.setAttribute('data-theme', stored);
-  else html.setAttribute('data-theme', matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light');
+  else html.setAttribute('data-theme', 'dark');  /* default: dark */
 
   function toggle(){
     const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
