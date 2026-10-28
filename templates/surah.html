@@ -1,0 +1,212 @@
+{% extends "base.html" %}{% block t %}{{ surah.englishName }} · Qurani{% endblock %}{% block c %}
+<style>
+.dx{--gx:var(--g,#16a36a);--cx:var(--card,#fff);--lx:var(--line,rgba(128,128,128,.22));
+  font-size:12.5px;line-height:1.55;display:flex;flex-direction:column;gap:11px;padding-bottom:12px}
+.dx *{box-sizing:border-box}
+.dx p{margin:0}
+.dx .back{display:inline-flex;align-items:center;gap:5px;align-self:flex-start;font-size:11px;font-weight:600;text-decoration:none;
+  color:inherit;opacity:.75;padding:5px 11px;border-radius:99px;border:1px solid var(--lx);background:var(--cx)}
+.dx .hero{position:relative;overflow:hidden;border-radius:18px;padding:18px 16px;color:#fff;text-align:center;
+  background:radial-gradient(120% 140% at 100% 0%,color-mix(in srgb,var(--gold) 40%,transparent),transparent 55%),linear-gradient(135deg,#0d5c43,#0a3d2e 70%);
+  box-shadow:0 10px 24px -12px rgba(10,61,46,.7)}
+.dx .hero::after{content:"";position:absolute;left:50%;top:-60px;width:150px;height:150px;margin-left:-75px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.12);box-shadow:0 0 0 16px rgba(255,255,255,.04),0 0 0 32px rgba(255,255,255,.025)}
+.dx .hero>*{position:relative;z-index:1}
+.dx .st-ar{font-size:32px;line-height:1.5;color:#f6e3b0}
+.dx .hero h1{margin:0;font-size:16px;font-weight:700}
+.dx .hero .meta{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:9px}
+.dx .hero .meta span{font-size:10.5px;padding:3px 10px;border-radius:99px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22)}
+
+.dx .pb{position:sticky;top:calc(env(safe-area-inset-top) + 66px);z-index:6;display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:9px 10px;border-radius:16px;
+  background:color-mix(in srgb,var(--cx) 92%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border:1px solid var(--lx);box-shadow:0 8px 22px -12px rgba(0,0,0,.35);margin:0}
+.dx .pb button{min-height:0;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:7px 13px;border-radius:99px;
+  border:1px solid var(--lx);background:transparent;color:inherit;cursor:pointer;width:auto;margin:0;line-height:1.2}
+.dx .pb button:active{transform:scale(.96)}
+.dx .pb #playAll{background:linear-gradient(135deg,#127a58,#0a3d2e);color:#fff;border-color:transparent;box-shadow:0 5px 12px -6px rgba(10,61,46,.8)}
+.dx .pb label{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:10.5px;opacity:.85;cursor:pointer}
+.dx .pb label input{width:auto;margin:0;accent-color:var(--gx)}
+.dx .pb #nowPlaying{font-size:10.5px;font-weight:600;color:var(--gx);margin-left:auto}
+.dx .pb #nowPlaying:empty{display:none}
+
+.dx .bism{text-align:center;font-size:23px;line-height:2;color:var(--gx);padding:8px 10px;margin:2px 0;
+  border-top:1px solid var(--lx);border-bottom:1px solid var(--lx);
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--gold) 10%,transparent),transparent)}
+
+.dx .ayahs{display:flex;flex-direction:column;gap:8px}
+.dx .ayah{background:var(--cx);border:1px solid var(--lx);border-radius:16px;padding:10px 13px 13px;margin:0;scroll-margin-top:150px;
+  transition:border-color .2s,background .2s,box-shadow .2s;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.dx .ayah.active{border-color:var(--gx);background:color-mix(in srgb,var(--gx) 7%,var(--cx));
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--gx) 14%,transparent)}
+.dx .ayah-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.dx .anum{display:grid;place-items:center;width:auto;min-width:26px;height:26px;padding:0 6px;border-radius:99px;font-size:10.5px;font-weight:700;
+  color:var(--gold);background:color-mix(in srgb,var(--gold) 16%,transparent);border:1px solid color-mix(in srgb,var(--gold) 40%,transparent);font-variant-numeric:tabular-nums}
+.dx .play-btn{width:30px;height:30px;min-height:0;padding:0;margin:0;display:grid;place-items:center;border-radius:50%;cursor:pointer;
+  color:var(--gx);background:color-mix(in srgb,var(--gx) 12%,transparent);border:1px solid color-mix(in srgb,var(--gx) 28%,transparent);
+  transition:all .15s}
+.dx .play-btn:active{transform:scale(.92)}
+.dx .play-btn.playing{color:#fff;background:var(--gx);border-color:var(--gx)}
+.dx .ayah-ar{font-size:25px;line-height:2.25;text-align:right;direction:rtl;margin:2px 0 0}
+.dx .tr-block{margin-top:9px;padding:9px 11px;border-radius:12px;font-size:12px;line-height:1.7;
+  background:color-mix(in srgb,var(--gx) 6%,transparent);border:0;border-left:3px solid var(--gold)}
+.dx .tr-block[hidden]{display:none}
+.dx .tr-block .ayah-tr-label{text-transform:none;letter-spacing:0;font-size:10px;font-weight:700;color:var(--gold);margin-bottom:3px}
+</style>
+
+<div class="dx">
+  <a href="/quran" class="back">{{ icon('reply',14) }} Surah zote</a>
+
+  <div class="hero surah-top">
+    <div class="st-ar">{{ surah.name }}</div>
+    <h1>{{ surah.englishName }}</h1>
+    <div class="meta">
+      <span>{{ surah.englishNameTranslation }}</span>
+      <span>{{ surah.numberOfAyahs }} aya</span>
+      <span>{{ surah.revelationType }}</span>
+    </div>
+  </div>
+
+  <div class="pb player-bar">
+    <button id="playAll" class="btn">{{ icon('play',14) }} <span>Sikiliza yote</span></button>
+    <button id="stopAll" class="ghost" style="display:none">{{ icon('x',14) }} Simamisha</button>
+    <button id="toggleTr" class="ghost" type="button">{{ icon('book',14) }} <span id="trLabel">Tafsiri</span></button>
+    <label title="Baada ya surah hii, endelea moja kwa moja kwenye surah ifuatayo">
+      <input type="checkbox" id="autoNext"> Endelea surah
+    </label>
+    <span id="nowPlaying"></span>
+  </div>
+
+  {% if surah.number != 1 and surah.number != 9 %}
+  <div class="bism">بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
+  {% endif %}
+
+  <div class="ayahs" id="ayahs">
+  {% for a in ayahs %}
+    <div class="ayah" id="a{{ a.numberInSurah }}" data-num="{{ a.numberInSurah }}" data-global="{{ a.number }}">
+      <div class="ayah-meta">
+        <span class="anum">{{ a.numberInSurah }}</span>
+        <button class="play-btn" data-g="{{ a.number }}" data-n="{{ a.numberInSurah }}" aria-label="Sikiliza aya {{ a.numberInSurah }}">
+          {{ icon('play',13) }}
+        </button>
+      </div>
+      <p class="ar ayah-ar">{{ a.text }}</p>
+      {% if a.translation %}
+      <div class="ayah-tr tr-block" hidden>
+        <div class="ayah-tr-label">Tafsiri (Kiswahili)</div>
+        {{ a.translation }}
+      </div>
+      {% endif %}
+    </div>
+  {% endfor %}
+  </div>
+</div>
+
+<audio id="audio" preload="none"></audio>
+
+<script>
+const audio = document.getElementById('audio');
+const playAllBtn = document.getElementById('playAll');
+const stopAllBtn = document.getElementById('stopAll');
+const nowPlaying = document.getElementById('nowPlaying');
+const toggleTr = document.getElementById('toggleTr');
+const trLabel = document.getElementById('trLabel');
+const autoNext = document.getElementById('autoNext');
+let queue = [], qIdx = -1, currentBtn = null;
+let showTr = localStorage.getItem('showTafsir') === '1';
+let contNext = localStorage.getItem('autoNextSurah') !== '0'; // default ON
+
+const SURAH_NUM = {{ surah.number }};
+const CDN = 'https://cdn.islamic.network/quran/audio/128/ar.alafasy/';
+
+autoNext.checked = contNext;
+autoNext.onchange = () => {
+  contNext = autoNext.checked;
+  localStorage.setItem('autoNextSurah', contNext ? '1' : '0');
+};
+
+function applyTr(){
+  document.querySelectorAll('.tr-block').forEach(el => { el.hidden = !showTr; });
+  trLabel.textContent = showTr ? 'Ficha tafsiri' : 'Tafsiri';
+  localStorage.setItem('showTafsir', showTr ? '1' : '0');
+}
+applyTr();
+toggleTr.onclick = () => { showTr = !showTr; applyTr(); };
+
+function setPlaying(btn, on){
+  if(currentBtn) currentBtn.classList.remove('playing');
+  currentBtn = on ? btn : null;
+  if(btn) btn.classList.toggle('playing', on);
+  document.querySelectorAll('.ayah').forEach(a => a.classList.remove('active'));
+  if(on && btn){
+    const ayah = btn.closest('.ayah');
+    if(ayah){ ayah.classList.add('active'); ayah.scrollIntoView({behavior:'smooth', block:'center'}); }
+  }
+}
+
+function playAyah(globalNum, localNum, btn){
+  audio.src = CDN + globalNum + '.mp3';
+  audio.play().catch(()=>{});
+  setPlaying(btn, true);
+  nowPlaying.textContent = 'Aya ' + localNum;
+}
+
+function goNextSurah(){
+  const next = SURAH_NUM >= 114 ? 1 : SURAH_NUM + 1;
+  // mark that we should auto-start play on next page
+  try { sessionStorage.setItem('quranAutoPlay', '1'); } catch(e){}
+  location.href = '/quran/' + next;
+}
+
+document.querySelectorAll('.play-btn').forEach(btn => {
+  btn.onclick = () => {
+    queue = []; qIdx = -1;
+    playAllBtn.style.display = '';
+    stopAllBtn.style.display = 'none';
+    playAyah(btn.dataset.g, btn.dataset.n, btn);
+  };
+});
+
+playAllBtn.onclick = () => {
+  queue = [...document.querySelectorAll('.play-btn')].map(b => ({g:b.dataset.g, n:b.dataset.n, btn:b}));
+  if(!queue.length) return;
+  qIdx = 0;
+  playAllBtn.style.display = 'none';
+  stopAllBtn.style.display = '';
+  playAyah(queue[0].g, queue[0].n, queue[0].btn);
+};
+
+stopAllBtn.onclick = () => {
+  audio.pause(); audio.src = '';
+  queue = []; qIdx = -1;
+  playAllBtn.style.display = '';
+  stopAllBtn.style.display = 'none';
+  setPlaying(null, false);
+  nowPlaying.textContent = '';
+  try { sessionStorage.removeItem('quranAutoPlay'); } catch(e){}
+};
+
+audio.onended = () => {
+  if(queue.length && qIdx < queue.length - 1){
+    qIdx++;
+    playAyah(queue[qIdx].g, queue[qIdx].n, queue[qIdx].btn);
+  } else if(queue.length && contNext){
+    // surah imeisha → surah ifuatayo (loop 114 → 1)
+    goNextSurah();
+  } else {
+    setPlaying(null, false);
+    playAllBtn.style.display = '';
+    stopAllBtn.style.display = 'none';
+    nowPlaying.textContent = '';
+    queue = [];
+  }
+};
+
+// Auto-start if came from previous surah
+try {
+  if(sessionStorage.getItem('quranAutoPlay') === '1'){
+    sessionStorage.removeItem('quranAutoPlay');
+    setTimeout(() => playAllBtn.click(), 400);
+  }
+} catch(e){}
+</script>
+{% endblock %}
