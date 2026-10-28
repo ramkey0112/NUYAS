@@ -1,0 +1,153 @@
+{% extends "base.html" %}{% block t %}{{ surah.englishName }} · Qurani{% endblock %}{% block c %}
+<div class="surah-top">
+  <a href="/quran" class="back">{{ icon('reply',16) }} Surah zote</a>
+  <div class="st-head">
+    <div class="st-ar">{{ surah.name }}</div>
+    <h1>{{ surah.englishName }}</h1>
+    <p class="muted">{{ surah.englishNameTranslation }} · {{ surah.numberOfAyahs }} aya · {{ surah.revelationType }}</p>
+  </div>
+
+  <div class="player-bar card">
+    <button id="playAll" class="btn">{{ icon('play',16) }} <span>Sikiliza yote</span></button>
+    <button id="stopAll" class="ghost" style="display:none">{{ icon('x',16) }} Simamisha</button>
+    <button id="toggleTr" class="ghost" type="button">{{ icon('book',16) }} <span id="trLabel">Tafsiri</span></button>
+    <label class="chk" style="margin:0;font-size:13px;gap:6px;align-items:center" title="Baada ya surah hii, endelea moja kwa moja kwenye surah ifuatayo">
+      <input type="checkbox" id="autoNext" style="width:auto;margin:0"> Endelea surah
+    </label>
+    <span class="muted" id="nowPlaying" style="font-size:13px"></span>
+  </div>
+</div>
+
+{% if surah.number != 1 and surah.number != 9 %}
+<div class="bismillah card">بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
+{% endif %}
+
+<div class="ayahs" id="ayahs">
+{% for a in ayahs %}
+<div class="ayah card" id="a{{ a.numberInSurah }}" data-num="{{ a.numberInSurah }}" data-global="{{ a.number }}">
+  <div class="ayah-meta">
+    <span class="anum">{{ a.numberInSurah }}</span>
+    <button class="play-btn" data-g="{{ a.number }}" data-n="{{ a.numberInSurah }}" aria-label="Sikiliza aya {{ a.numberInSurah }}">
+      {{ icon('play',15) }}
+    </button>
+  </div>
+  <p class="ar ayah-ar">{{ a.text }}</p>
+  {% if a.translation %}
+  <div class="ayah-tr tr-block" hidden>
+    <div class="ayah-tr-label">Tafsiri (Kiswahili)</div>
+    {{ a.translation }}
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+</div>
+
+<audio id="audio" preload="none"></audio>
+
+<script>
+const audio = document.getElementById('audio');
+const playAllBtn = document.getElementById('playAll');
+const stopAllBtn = document.getElementById('stopAll');
+const nowPlaying = document.getElementById('nowPlaying');
+const toggleTr = document.getElementById('toggleTr');
+const trLabel = document.getElementById('trLabel');
+const autoNext = document.getElementById('autoNext');
+let queue = [], qIdx = -1, currentBtn = null;
+let showTr = localStorage.getItem('showTafsir') === '1';
+let contNext = localStorage.getItem('autoNextSurah') !== '0'; // default ON
+
+const SURAH_NUM = {{ surah.number }};
+const CDN = 'https://cdn.islamic.network/quran/audio/128/ar.alafasy/';
+
+autoNext.checked = contNext;
+autoNext.onchange = () => {
+  contNext = autoNext.checked;
+  localStorage.setItem('autoNextSurah', contNext ? '1' : '0');
+};
+
+function applyTr(){
+  document.querySelectorAll('.tr-block').forEach(el => { el.hidden = !showTr; });
+  trLabel.textContent = showTr ? 'Ficha tafsiri' : 'Tafsiri';
+  localStorage.setItem('showTafsir', showTr ? '1' : '0');
+}
+applyTr();
+toggleTr.onclick = () => { showTr = !showTr; applyTr(); };
+
+function setPlaying(btn, on){
+  if(currentBtn) currentBtn.classList.remove('playing');
+  currentBtn = on ? btn : null;
+  if(btn) btn.classList.toggle('playing', on);
+  document.querySelectorAll('.ayah').forEach(a => a.classList.remove('active'));
+  if(on && btn){
+    const ayah = btn.closest('.ayah');
+    if(ayah){ ayah.classList.add('active'); ayah.scrollIntoView({behavior:'smooth', block:'center'}); }
+  }
+}
+
+function playAyah(globalNum, localNum, btn){
+  audio.src = CDN + globalNum + '.mp3';
+  audio.play().catch(()=>{});
+  setPlaying(btn, true);
+  nowPlaying.textContent = 'Aya ' + localNum;
+}
+
+function goNextSurah(){
+  const next = SURAH_NUM >= 114 ? 1 : SURAH_NUM + 1;
+  // mark that we should auto-start play on next page
+  try { sessionStorage.setItem('quranAutoPlay', '1'); } catch(e){}
+  location.href = '/quran/' + next;
+}
+
+document.querySelectorAll('.play-btn').forEach(btn => {
+  btn.onclick = () => {
+    queue = []; qIdx = -1;
+    playAllBtn.style.display = '';
+    stopAllBtn.style.display = 'none';
+    playAyah(btn.dataset.g, btn.dataset.n, btn);
+  };
+});
+
+playAllBtn.onclick = () => {
+  queue = [...document.querySelectorAll('.play-btn')].map(b => ({g:b.dataset.g, n:b.dataset.n, btn:b}));
+  if(!queue.length) return;
+  qIdx = 0;
+  playAllBtn.style.display = 'none';
+  stopAllBtn.style.display = '';
+  playAyah(queue[0].g, queue[0].n, queue[0].btn);
+};
+
+stopAllBtn.onclick = () => {
+  audio.pause(); audio.src = '';
+  queue = []; qIdx = -1;
+  playAllBtn.style.display = '';
+  stopAllBtn.style.display = 'none';
+  setPlaying(null, false);
+  nowPlaying.textContent = '';
+  try { sessionStorage.removeItem('quranAutoPlay'); } catch(e){}
+};
+
+audio.onended = () => {
+  if(queue.length && qIdx < queue.length - 1){
+    qIdx++;
+    playAyah(queue[qIdx].g, queue[qIdx].n, queue[qIdx].btn);
+  } else if(queue.length && contNext){
+    // surah imeisha → surah ifuatayo (loop 114 → 1)
+    goNextSurah();
+  } else {
+    setPlaying(null, false);
+    playAllBtn.style.display = '';
+    stopAllBtn.style.display = 'none';
+    nowPlaying.textContent = '';
+    queue = [];
+  }
+};
+
+// Auto-start if came from previous surah
+try {
+  if(sessionStorage.getItem('quranAutoPlay') === '1'){
+    sessionStorage.removeItem('quranAutoPlay');
+    setTimeout(() => playAllBtn.click(), 400);
+  }
+} catch(e){}
+</script>
+{% endblock %}

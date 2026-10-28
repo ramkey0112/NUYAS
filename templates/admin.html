@@ -1,0 +1,84 @@
+{% extends "base.html" %}{% block t %}Admin{% endblock %}{% block c %}
+<h2>Malipo ya hivi karibuni</h2>
+{% for p in pays %}
+<div class="card row">
+  <span><b>{{ p.users.name if p.users else '?' }}</b> <span class="muted">{{ p.users.email if p.users else '' }}</span><br>TSh {{ p.amount }} · {{ (p.created_at or '')[:10] }}</span>
+  <span class="tag">{{ p.status }}</span>
+</div>
+{% else %}<p class="muted">Hakuna malipo bado.</p>{% endfor %}
+
+<h2>Mpe mtu uanachama</h2>
+<form method="post" action="/admin/grant" class="card">
+  <input type="email" name="email" placeholder="Barua pepe ya mtumiaji" required>
+  <input type="number" name="days" value="30" style="margin-top:8px">
+  <button style="margin-top:10px">Toa uanachama</button>
+</form>
+
+<h2>{{ icon('image',18) }} Banner (picha + slideshow)</h2>
+<form method="post" action="/admin/banner" class="card" enctype="multipart/form-data">
+  <label>Pakia picha</label>
+  <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif">
+  <label>au URL ya picha</label>
+  <input name="image_url" placeholder="https://...">
+  <label>Kichwa (hiari)</label>
+  <input name="title" placeholder="Mf. Ramadhan Offer">
+  <label>Kiungo (hiari)</label>
+  <input name="link_url" placeholder="https://... au /pay">
+  <label>Nafasi</label>
+  <input type="number" name="position" value="1">
+  <p class="muted" style="margin-top:8px">Banner zitaonyeshwa kwenye dashboard kama slideshow (sekunde 2 kila moja).</p>
+  <button style="margin-top:10px">Ongeza banner</button>
+</form>
+{% if banners %}
+{% for b in banners %}
+<div class="card row">
+  <span>
+    <img src="{{ b.image_url }}" alt="" style="max-width:120px;max-height:60px;border-radius:8px;object-fit:cover;vertical-align:middle">
+    <span class="muted">{{ b.title or 'Banner' }} · {{ 'hai' if b.active else 'imezimwa' }}</span>
+  </span>
+  <form method="post" action="/admin/banner/toggle/{{ b.id }}" style="margin:0">
+    <button type="submit" class="ghost" style="min-height:36px;padding:6px 12px">{{ 'Zima' if b.active else 'Washa' }}</button>
+  </form>
+</div>
+{% endfor %}
+{% endif %}
+
+<h2>{{ icon('help',18) }} Uliza swali (channel)</h2>
+<form method="post" action="/admin/swali" class="card">
+  <textarea name="body" rows="3" placeholder="Andika swali lako kwa jamii..." required maxlength="1000"></textarea>
+  <button style="margin-top:10px">Chapisha swali</button>
+</form>
+{% if qs %}
+{% for q in qs %}
+<div class="card"><p style="margin:0">{{ q.body[:160] }}{% if q.body|length>160 %}…{% endif %}</p>
+<span class="muted" style="font-size:12px">{{ (q.created_at or '')[:10] }}</span></div>
+{% endfor %}
+{% endif %}
+
+<h2>Ongeza adhkar</h2>
+<form method="post" action="/admin/add/adhkar" class="card">
+  <select name="type"><option value="asubuhi">Asubuhi</option><option value="jioni">Jioni</option></select>
+  <input name="arabic" placeholder="Kiarabu" required style="margin-top:8px">
+  <textarea name="swahili" placeholder="Tafsiri ya Kiswahili" required style="margin-top:8px"></textarea>
+  <input name="source" placeholder="Rejea (mf. Hisnul Muslim)" style="margin-top:8px">
+  <button style="margin-top:10px">Ongeza adhkar</button>
+</form>
+
+<h2>Ongeza kozi</h2>
+<form method="post" action="/admin/add/course" class="card">
+  <input name="title" placeholder="Jina la kozi" required>
+  <textarea name="description" placeholder="Maelezo" style="margin-top:8px"></textarea>
+  <button style="margin-top:10px">Ongeza kozi</button>
+</form>
+
+<h2>Ongeza somo</h2>
+<form method="post" action="/admin/add/lesson" class="card">
+  <select name="course_id">{% for c in cs %}<option value="{{ c.id }}">{{ c.title }}</option>{% endfor %}</select>
+  <input name="title" placeholder="Kichwa cha somo" required style="margin-top:8px">
+  <textarea name="body" rows="5" placeholder="Maudhui" style="margin-top:8px"></textarea>
+  <input name="audio_url" placeholder="Kiungo cha sauti (hiari)" style="margin-top:8px">
+  <input name="position" type="number" value="1" style="margin-top:8px">
+  <label class="chk"><input type="checkbox" name="is_free"> Somo la bure</label>
+  <button>Ongeza somo</button>
+</form>
+{% endblock %}

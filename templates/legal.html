@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block c %}
+{% if page=="privacy" %}<h2>Sera ya Faragha</h2><div class="card">
+<p><b>Tunachokusanya:</b> jina, barua pepe, mji, namba ya simu (hiari), jumbe unazoandika kwenye jamii, na historia ya malipo. Malipo yanachakatwa na ClickPesa; hatuhifadhi PIN wala taarifa za kadi.</p>
+<p><b>Tunavyotumia:</b> kukupa huduma, kukutumia ukumbusho (email/WhatsApp) ukiruhusu, na kuthibitisha malipo. Hatuuzi taarifa zako.</p>
+<p><b>Wahusika wa tatu:</b> Supabase (hifadhi), Vercel (seva), ClickPesa (malipo), Resend (email), Meta (WhatsApp), Aladhan (nyakati za swala).</p>
+<p><b>Haki zako:</b> unaweza kuhariri wasifu wako, kuzima ukumbusho, na kufuta akaunti yako na taarifa zote kutoka ukurasa wa Wasifu wakati wowote.</p>
+<p><b>Mawasiliano:</b> weka barua pepe ya huduma kwa wateja hapa.</p><p class="muted">Mmiliki: mwanasheria wa Tanzania aipitie kulingana na Sheria ya Ulinzi wa Taarifa Binafsi, 2022.</p></div>
+{% else %}<h2>Masharti ya Matumizi</h2><div class="card">
+<p>1. Huduma hii ni ya elimu na ukumbusho wa ibada. Si mbadala wa fatwa; kwa masuala ya kifiqh wasiliana na mwalimu au sheikh.</p>
+<p>2. Katika jamii, heshimu wengine. Matusi, chuki, matangazo, kashfa na maudhui yasiyofaa ni marufuku, na ujumbe au akaunti vinaweza kuondolewa.</p>
+<p>3. Uanachama ni TSh {{ PRICE }} kwa siku 30. Malipo yaliyofanikiwa hayarudishwi isipokuwa kwa hitilafu ya huduma.</p>
+<p>4. Hairuhusiwi kunakili au kuuza tena maudhui ya kozi bila ruhusa.</p>
+<p>5. Tunaweza kubadilisha masharti haya; tutakujulisha mabadiliko makubwa.</p>
+<p class="muted">Mmiliki: mwanasheria aipitie kabla ya kuzindua.</p></div>{% endif %}{% endblock %}

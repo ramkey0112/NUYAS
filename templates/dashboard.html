@@ -1,0 +1,118 @@
+{% extends "base.html" %}{% block c %}
+<div class="welcome">
+  <small>Salaam</small>
+  <h2>{{ u.name }}</h2>
+  {% if u.premium %}
+    <p><span class="tag">{{ icon('check',14) }} Mwanachama hadi {{ u.until.strftime("%d/%m/%Y") }}</span></p>
+  {% else %}
+    <p><span class="tag lock">{{ icon('lock',14) }} Akaunti ya bure</span> <a href="/pay">Jiunge kufungua kozi zote</a></p>
+  {% endif %}
+</div>
+
+{% if banners %}
+<div class="banner-slider card" id="bannerSlider" style="padding:0;overflow:hidden;position:relative;margin:0 0 14px">
+  {% for b in banners %}
+  <div class="banner-slide" style="display:{% if loop.first %}block{% else %}none{% endif %};position:relative">
+    {% if b.link_url %}<a href="{{ b.link_url }}">{% endif %}
+    <img src="{{ b.image_url }}" alt="{{ b.title or 'Banner' }}" style="width:100%;max-height:180px;object-fit:cover;display:block">
+    {% if b.title %}<div style="position:absolute;bottom:0;left:0;right:0;padding:10px 14px;background:linear-gradient(transparent,rgba(0,0,0,.65));color:#fff;font-weight:600;font-size:14px">{{ b.title }}</div>{% endif %}
+    {% if b.link_url %}</a>{% endif %}
+  </div>
+  {% endfor %}
+  {% if banners|length > 1 %}
+  <div style="position:absolute;bottom:8px;right:10px;display:flex;gap:5px;z-index:2">
+    {% for b in banners %}
+    <span class="dot" data-i="{{ loop.index0 }}" style="width:7px;height:7px;border-radius:50%;background:{% if loop.first %}#fff{% else %}rgba(255,255,255,.4){% endif %};cursor:pointer"></span>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+<script>
+(function(){
+  const slides=[...document.querySelectorAll('.banner-slide')];
+  const dots=[...document.querySelectorAll('.dot')];
+  if(slides.length<2) return;
+  let i=0;
+  setInterval(()=>{
+    slides[i].style.display='none';
+    if(dots[i]) dots[i].style.background='rgba(255,255,255,.4)';
+    i=(i+1)%slides.length;
+    slides[i].style.display='block';
+    if(dots[i]) dots[i].style.background='#fff';
+  },2000);
+  dots.forEach(d=>d.onclick=()=>{
+    slides[i].style.display='none';
+    if(dots[i]) dots[i].style.background='rgba(255,255,255,.4)';
+    i=+d.dataset.i;
+    slides[i].style.display='block';
+    d.style.background='#fff';
+  });
+})();
+</script>
+{% endif %}
+
+<a href="/quran" style="text-decoration:none;color:inherit">
+  <div class="card" style="background:linear-gradient(135deg,color-mix(in srgb,var(--g) 12%,var(--card)),var(--card));border-color:color-mix(in srgb,var(--g) 35%,var(--line))">
+    <div class="row">
+      <div>
+        <b style="font-size:16px">{{ icon('book',18) }} Qurani Tukufu</b>
+        <p class="muted" style="margin:4px 0 0">Soma Kiarabu + tafsiri Kiswahili · sikiliza Kiarabu</p>
+      </div>
+      <span class="tag">Fungua</span>
+    </div>
+  </div>
+</a>
+
+<a href="/maswali" style="text-decoration:none;color:inherit">
+  <div class="card">
+    <div class="row">
+      <div>
+        <b style="font-size:16px">{{ icon('help',18) }} Maswali na Majibu</b>
+        <p class="muted" style="margin:4px 0 0">Jibu maswali ya admin · channel</p>
+      </div>
+      <span class="tag">Fungua</span>
+    </div>
+  </div>
+</a>
+
+<div class="card">
+  <b>Nyakati za swala, {{ u.city }}</b>
+  {% if times %}
+    <div class="times" style="margin-top:10px">
+      {% for k,v in times.items() %}<div>{{ k }}<b>{{ v }}</b></div>{% endfor %}
+    </div>
+  {% else %}
+    <p class="muted">Nyakati hazipatikani sasa. Jaribu tena baadaye.</p>
+  {% endif %}
+</div>
+
+<div class="card tasbih">
+  <b>Tasbih</b>
+  <div class="muted">Lengo: <span id="goal">33</span></div>
+  <button class="big" id="tap" aria-label="Hesabu"><span id="n" style="margin:auto">0</span></button>
+  <button class="ghost" id="rst">{{ icon('refresh',18) }} Anza upya</button>
+  <button class="ghost" id="g">Badili lengo</button>
+</div>
+
+<h3>Adhkar za {{ kind }}</h3>
+{% for a in items %}
+  <div class="card">
+    <p class="ar">{{ a.arabic }}</p>
+    <p>{{ a.swahili }}</p>
+    <p class="muted">{{ a.source }}</p>
+  </div>
+{% else %}
+  <p class="muted">Hakuna adhkar bado.</p>
+{% endfor %}
+
+<script>
+let n=0, goal=33;
+try{ n=+localStorage.getItem('tn')||0; goal=+localStorage.getItem('tg')||33 }catch(e){}
+const N=document.getElementById('n'), G=document.getElementById('goal');
+function show(){ N.textContent=n; G.textContent=goal; try{localStorage.setItem('tn',n);localStorage.setItem('tg',goal)}catch(e){} }
+document.getElementById('tap').onclick=()=>{ n++; if(navigator.vibrate) navigator.vibrate(n%goal==0?[60,40,60]:15); show() };
+document.getElementById('rst').onclick=()=>{ n=0; show() };
+document.getElementById('g').onclick=()=>{ goal = goal==33 ? 100 : goal==100 ? 10 : 33; show() };
+show();
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}{% block t %}Qurani{% endblock %}{% block c %}
+<div class="quran-hero">
+  <div class="qh-inner">
+    <span class="badge">{{ icon('book',14) }} Bure kabisa</span>
+    <h1>Qurani Tukufu</h1>
+    <p>Soma na sikiliza aya kwa aya. Tafsiri ya Kiswahili + Kiingereza. Sauti ya Mishary Alafasy.</p>
+  </div>
+</div>
+
+<div class="q-search card" style="padding:12px 14px">
+  <input type="search" id="qsearch" placeholder="Tafuta surah (mf. Fatiha, 2, Bakara)..." autocomplete="off">
+</div>
+
+<div class="surah-grid" id="slist">
+{% for s in surahs %}
+<a href="/quran/{{ s.number }}" class="surah-card" data-n="{{ s.number }}" data-name="{{ s.name|lower }} {{ s.englishName|lower }} {{ s.englishNameTranslation|lower }}">
+  <div class="sn">{{ s.number }}</div>
+  <div class="si">
+    <b>{{ s.englishName }}</b>
+    <span class="muted">{{ s.englishNameTranslation }} · {{ s.numberOfAyahs }} aya</span>
+  </div>
+  <div class="sar">{{ s.name }}</div>
+</a>
+{% else %}
+<p class="muted">Orodha haipatikani sasa. Jaribu tena.</p>
+{% endfor %}
+</div>
+
+<script>
+const q=document.getElementById('qsearch'), list=document.getElementById('slist');
+q.oninput=()=>{
+  const v=q.value.trim().toLowerCase();
+  [...list.querySelectorAll('.surah-card')].forEach(c=>{
+    c.style.display = (!v || c.dataset.name.includes(v) || c.dataset.n===v) ? '' : 'none';
+  });
+};
+</script>
+{% endblock %}

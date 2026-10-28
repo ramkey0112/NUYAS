@@ -1,0 +1,31 @@
+{% extends "base.html" %}{% block t %}Swali{% endblock %}{% block c %}
+<a href="/maswali" class="back">{{ icon('reply',16) }} Maswali yote</a>
+
+<div class="card" style="border-color:color-mix(in srgb,var(--g) 40%,var(--line))">
+  <div class="row">
+    <span class="tag">{{ icon('help',14) }} Swali</span>
+    <span class="muted" style="font-size:12px">{{ (q.created_at or '')[:16].replace('T',' ') }}</span>
+  </div>
+  <p style="margin:12px 0 6px;font-size:16px;font-weight:600;line-height:1.5">{{ q.body }}</p>
+  <span class="muted" style="font-size:13px">na {{ (q.users or {}).name or 'Admin' }}</span>
+</div>
+
+<h3>Majibu ({{ answers|length }})</h3>
+{% for a in answers %}
+<div class="card">
+  <div class="row">
+    <b style="font-size:14px">{{ (a.users or {}).name or 'Mtumiaji' }}</b>
+    <span class="muted" style="font-size:12px">{{ (a.created_at or '')[:16].replace('T',' ') }}</span>
+  </div>
+  <p style="margin:8px 0 0;line-height:1.55">{{ a.body }}</p>
+</div>
+{% else %}
+<p class="muted">Hakuna majibu bado. Kuwa wa kwanza kujibu.</p>
+{% endfor %}
+
+<form method="post" action="/maswali/{{ q.id }}/jibu" class="card">
+  <label>Jibu lako</label>
+  <textarea name="body" rows="3" maxlength="800" placeholder="Andika jibu lako hapa..." required></textarea>
+  <button style="margin-top:10px">{{ icon('send',16) }} Tuma jibu</button>
+</form>
+{% endblock %}

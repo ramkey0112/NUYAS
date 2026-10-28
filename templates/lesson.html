@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block c %}<h2>{{ l.title }}</h2>
+{% if l.audio_url %}<audio controls style="width:100%" src="{{ l.audio_url }}"></audio>{% endif %}
+<div class="card" style="white-space:pre-wrap">{{ l.body }}</div><a href="/course/{{ l.course_id }}">Rudi kwenye kozi</a>{% endblock %}
