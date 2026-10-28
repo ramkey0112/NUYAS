@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block c %}<h2>Malipo ya hivi karibuni</h2>
+{% for p in pays %}<div class="card row"><span><b>{{ p.users.name }}</b> <span class="muted">{{ p.users.email }}</span><br>TSh {{ p.amount }} - {{ p.created_at[:10] }}</span><span class="tag">{{ p.status }}</span></div>
+{% else %}<p class="muted">Hakuna malipo bado.</p>{% endfor %}
+<h2>Mpe mtu uanachama</h2><form method="post" action="/admin/grant" class="card"><input type="email" name="email" placeholder="Barua pepe ya mtumiaji" required><input type="number" name="days" value="30"><button>Toa uanachama</button></form>
+<h2>Ongeza adhkar</h2><form method="post" action="/admin/add/adhkar" class="card">
+<select name="type"><option value="asubuhi">Asubuhi</option><option value="jioni">Jioni</option></select>
+<input name="arabic" placeholder="Kiarabu" required><textarea name="swahili" placeholder="Tafsiri ya Kiswahili" required></textarea>
+<input name="source" placeholder="Rejea (mf. Hisnul Muslim)"><button>Ongeza adhkar</button></form>
+<h2>Ongeza kozi</h2><form method="post" action="/admin/add/course" class="card"><input name="title" placeholder="Jina la kozi" required><textarea name="description" placeholder="Maelezo"></textarea><button>Ongeza kozi</button></form>
+<h2>Ongeza somo</h2><form method="post" action="/admin/add/lesson" class="card"><select name="course_id">{% for c in cs %}<option value="{{ c.id }}">{{ c.title }}</option>{% endfor %}</select>
+<input name="title" placeholder="Kichwa cha somo" required><textarea name="body" rows="6" placeholder="Maudhui"></textarea>
+<input name="audio_url" placeholder="Kiungo cha sauti (hiari)"><input name="position" type="number" value="1">
+<label><input type="checkbox" name="is_free" style="width:auto"> Somo la bure</label><br><br><button>Ongeza somo</button></form>{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}{% block t %}Wasifu{% endblock %}{% block c %}<h2>Wasifu wangu</h2>
+<form method="post" class="card"><label>Jina</label><input name="name" value="{{ u.name }}" required>
+<label>Barua pepe</label><input value="{{ u.email }}" disabled>
+<label>Mji</label><input name="city" value="{{ u.city }}">
+<label>Namba ya WhatsApp (hiari)</label><input name="phone" type="tel" inputmode="numeric" value="{{ u.phone or '' }}" placeholder="0712345678">
+<label>Kuhusu mimi</label><textarea name="bio" rows="2" maxlength="200">{{ u.bio or '' }}</textarea>
+<h3 style="margin:6px 0">{{ icon('bell',20) }} Ukumbusho wa kila siku</h3>
+<label class="chk"><input type="checkbox" name="notify_email" {{ 'checked' if u.notify_email }}> Nitumie adhkar kwa email</label>
+<label class="chk"><input type="checkbox" name="notify_whatsapp" {{ 'checked' if u.notify_whatsapp }}> Nitumie adhkar kwa WhatsApp</label>
+<button>Hifadhi</button></form>
+<h3>{{ icon('lock',20) }} Badili nenosiri</h3><form method="post" action="/profile/password" class="card">
+<label>Nenosiri la sasa</label><input type="password" name="old" autocomplete="current-password" required>
+<label>Nenosiri jipya</label><input type="password" name="new" minlength="6" autocomplete="new-password" required><button>Badili nenosiri</button></form>
+<h3>{{ icon('shield',20) }} Faragha</h3><div class="card"><a href="/privacy">Sera ya Faragha</a> &nbsp;|&nbsp; <a href="/terms">Masharti ya Matumizi</a></div>
+<p><a class="btn ghost" href="/logout">{{ icon('logout',18) }} Toka</a></p>
+<h3>Futa akaunti</h3><form method="post" action="/profile/delete" class="card" onsubmit="return confirm('Hatua hii haiwezi kurudishwa. Endelea?')">
+<p class="muted">Akaunti yako, jumbe zako za jamii na historia ya malipo vitafutwa kabisa.</p>
+<label>Andika FUTA</label><input name="confirm" required><label>Nenosiri</label><input type="password" name="password" required>
+<button class="danger">{{ icon('trash',18) }} Futa akaunti yangu</button></form>{% endblock %}

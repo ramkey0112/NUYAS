@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block c %}
+<section class="hero"><h1>Adhkar, nyakati za swala, kozi na jamii. Kila siku, kwa Kiswahili.</h1>
+<p class="muted">Pokea adhkar kwa email au WhatsApp, soma kozi, na ungana na ndugu waumini. Jisajili bure; uanachama ni TSh {{ PRICE }} kwa mwezi.</p>
+<p><a class="btn" href="/register">Anza bure</a> <a class="btn ghost" href="/login">Nina akaunti</a></p></section>
+<div class="card"><p class="ar">سُبْحَانَ اللَّهِ وَبِحَمْدِهِ</p><p>Ametakasika Allah na kuhimidiwa Yeye.</p></div>
+<div class="card"><div class="chk">{{ icon('bell') }}&nbsp;Ukumbusho wa kila siku asubuhi na jioni</div><div class="chk">{{ icon('clock') }}&nbsp;Nyakati za swala za mji wako</div>
+<div class="chk">{{ icon('book') }}&nbsp;Kozi za mwanzo hadi za kina</div><div class="chk">{{ icon('users') }}&nbsp;Jamii ya kuchati na kusaidiana</div>
+<div class="chk">{{ icon('card') }}&nbsp;Lipa kwa M-Pesa, Tigo Pesa, Airtel Money au HaloPesa</div></div>{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block c %}<h2>Uanachama: TSh {{ PRICE }} kwa mwezi</h2>
+{% if user.premium %}<p class="tag">{{ icon('check',14) }} Unaisha {{ user.until.strftime("%d/%m/%Y") }}. Ukilipia sasa, siku 30 zinaongezwa.</p>{% endif %}
+{% if ref %}<div class="card" id="wait"><p class="row" style="justify-content:flex-start">{{ icon('refresh',22).__str__()|replace('class="ic"','class="ic spin"')|safe }} <b>Subiri ombi kwenye simu yako</b></p>
+<p>Utapokea ujumbe wa kuweka PIN ya mobile money. Weka PIN kukamilisha malipo. Ukurasa huu utajisasisha wenyewe.</p></div>
+<script>let t=0;const iv=setInterval(async()=>{t++;try{const r=await(await fetch('/pay/status/{{ ref }}')).json();
+if(r.status==='approved'){clearInterval(iv);location.href='/dashboard'}
+else if(r.status==='rejected'){clearInterval(iv);document.getElementById('wait').innerHTML='<b>Malipo hayakukamilika.</b> <a href="/pay">Jaribu tena</a>'}}catch(e){}
+if(t>45){clearInterval(iv);document.getElementById('wait').innerHTML='Bado tunasubiri uthibitisho. Fungua upya ukurasa huu baada ya dakika chache.'}},4000)</script>
+{% else %}<form method="post" class="card"><label>Namba ya simu ya kulipia</label>
+<input name="phone" type="tel" inputmode="numeric" placeholder="0712345678" required>
+<p class="muted">Tutatuma ombi la malipo moja kwa moja kwenye simu yako (M-Pesa, Tigo Pesa, Airtel Money au HaloPesa).</p>
+<button>{{ icon('card',18) }} Lipa TSh {{ PRICE }}</button></form>{% endif %}
+{% if mine %}<h3>Malipo yako</h3>{% for p in mine %}<div class="card row"><span>TSh {{ p.amount }} <span class="muted">{{ p.created_at[:10] }}</span></span><span class="tag">{{ {"pending":"Inasubiri","approved":"Imekamilika","rejected":"Imeshindikana"}[p.status] }}</span></div>{% endfor %}{% endif %}{% endblock %}
