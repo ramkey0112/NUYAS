@@ -38,20 +38,46 @@ const iv=setInterval(async()=>{
 },4000);
 </script>
 {% else %}
-<form method="post" class="card">
-  <label>Namba ya simu ya kulipia</label>
-  <input name="phone" type="tel" inputmode="numeric" placeholder="0712345678" required>
-  <p class="muted">Tutatuma ombi la malipo moja kwa moja kwenye simu yako (M-Pesa, Tigo Pesa, Airtel Money au HaloPesa).</p>
-  <button>{{ icon('card',18) }} Lipa TSh {{ PRICE }}</button>
-</form>
+
+<div class="card">
+  <h3 style="margin-top:0">Lipa moja kwa moja (USSD Push)</h3>
+  <form method="post">
+    <input type="hidden" name="method" value="clickpesa">
+    <label>Namba ya simu ya kulipia</label>
+    <input name="phone" type="tel" inputmode="numeric" placeholder="0712345678" required>
+    <p class="muted">Tutatuma ombi la malipo kwenye simu yako (M-Pesa, Tigo Pesa, Airtel Money au HaloPesa).</p>
+    <button>{{ icon('card',18) }} Lipa TSh {{ PRICE }}</button>
+  </form>
+</div>
+
+{% if PAY_NUMBER %}
+<div class="card" style="margin-top:14px">
+  <h3 style="margin-top:0">Malipo ya mkono</h3>
+  <p>Tuma <b>TSh {{ PRICE }}</b> kwenda:</p>
+  <p style="font-size:1.25rem;font-weight:700;margin:8px 0">{{ PAY_NUMBER }}</p>
+  {% if PAY_NAME %}<p class="muted">Jina: {{ PAY_NAME }}</p>{% endif %}
+  <form method="post" style="margin-top:14px">
+    <input type="hidden" name="method" value="manual">
+    <label>Namba ya kumbukumbu (reference / TID)</label>
+    <input name="reference" placeholder="Mf. 8A7B2C9D" required>
+    <label style="margin-top:8px">Namba ya simu uliyotumia</label>
+    <input name="phone" type="tel" inputmode="numeric" placeholder="0712345678">
+    <button style="margin-top:10px">Wasilisha uthibitisho</button>
+  </form>
+  <p class="muted" style="margin-top:10px;font-size:13px">Admin atathibitisha na kuweka uanachama wako.</p>
+</div>
+{% endif %}
+
 {% endif %}
 
 {% if mine %}
 <h3>Malipo yako</h3>
 {% for p in mine %}
 <div class="card row">
-  <span>TSh {{ p.amount }} <span class="muted">{{ p.created_at[:10] }}</span></span>
-  <span class="tag">{{ {"pending":"Inasubiri","approved":"Imekamilika","rejected":"Imeshindikana"}[p.status] }}</span>
+  <span>TSh {{ p.amount }} · {{ p.method or '—' }} <span class="muted">{{ (p.created_at or '')[:10] }}</span>
+  {% if p.reference %}<br><span class="muted">Ref: {{ p.reference }}</span>{% endif %}
+  </span>
+  <span class="tag">{{ {"pending":"Inasubiri","approved":"Imekamilika","rejected":"Imeshindikana"}.get(p.status, p.status) }}</span>
 </div>
 {% endfor %}
 {% endif %}

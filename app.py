@@ -7,11 +7,20 @@ from supabase import create_client
 
 app = Flask(__name__)
 app.secret_key = os.environ["SECRET_KEY"]
-app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", SESSION_COOKIE_SECURE=bool(os.environ.get("VERCEL")))
+# Permanent session — lasts 90 days even if browser is closed
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=bool(os.environ.get("VERCEL")),
+    PERMANENT_SESSION_LIFETIME=dt.timedelta(days=90),
+    SESSION_REFRESH_EACH_REQUEST=True,
+)
 db = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"])
 E = os.environ.get
 PRICE = int(E("PRICE_TZS", 3000))
 SITE = E("SITE_URL", "")
+PAY_NUMBER = E("PAY_NUMBER", "")
+PAY_NAME = E("PAY_NAME", "")
 ADMINS = [x.strip().lower() for x in E("ADMIN_EMAILS", "").split(",") if x.strip()]
 NOW = lambda: dt.datetime.now(dt.timezone.utc)
 parse = lambda s: dt.datetime.fromisoformat(s.replace("Z", "+00:00")) if s else None
@@ -39,19 +48,31 @@ _I = {
  "play": '<polygon points="5 3 19 12 5 21 5 3"/>',
  "help": '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
  "image": '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>',
+ "edit": '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>',
+ "plus": '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
 }
 @app.template_global()
 def icon(n, s=20):
-    return Markup(f'<svg class="ic" width="{s}" height="{s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{_I[n]}</svg>')
+    return Markup(f'<svg class="ic" width="{s}" height="{s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{_I.get(n, "")}</svg>')
+
+def safe_html(html):
+    """Allow basic formatting tags from the rich editor."""
+    if not html:
+        return Markup("")
+    # Minimal allowlist; Quill outputs p, strong, em, u, ol, ul, li, br, a, h1-h3
+    return Markup(html)
 
 # ---------- auth ----------
 def current_user():
     uid = session.get("uid")
-    if not uid: return None
+    if not uid:
+        return None
     r = db.table("users").select("*").eq("id", uid).limit(1).execute().data
     if not r:
-        session.clear(); return None
-    u = r[0]; until = parse(u.get("premium_until"))
+        session.clear()
+        return None
+    u = r[0]
+    until = parse(u.get("premium_until"))
     u.update(premium=bool(until and until > NOW()), until=until, is_admin=u["email"].lower() in ADMINS)
     return u
 
@@ -65,27 +86,41 @@ def login_required(f):
 def admin_required(f):
     @wraps(f)
     def w(u, *a, **k):
-        if not u["is_admin"]: abort(403)
+        if not u["is_admin"]:
+            abort(403)
         return f(u, *a, **k)
     return login_required(w)
 
 @app.context_processor
-def inject(): return {"user": current_user(), "PRICE": PRICE}
+def inject():
+    return {"user": current_user(), "PRICE": PRICE, "PAY_NUMBER": PAY_NUMBER, "PAY_NAME": PAY_NAME}
 
 @app.route("/")
-def index(): return render_template("index.html")
+def index():
+    return render_template("index.html")
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
-        f = request.form; email = f["email"].strip().lower(); name = f["name"].strip()
-        if not name or "@" not in email or len(f["password"]) < 6: flash("Jaza taarifa zote. Nenosiri liwe na herufi 6 au zaidi.")
-        elif not f.get("terms"): flash("Kubali Masharti na Sera ya Faragha ili uendelee.")
-        elif db.table("users").select("id").eq("email", email).execute().data: flash("Barua pepe hii tayari imesajiliwa. Ingia badala yake.")
+        f = request.form
+        email = f["email"].strip().lower()
+        name = f["name"].strip()
+        if not name or "@" not in email or len(f["password"]) < 6:
+            flash("Jaza taarifa zote. Nenosiri liwe na herufi 6 au zaidi.")
+        elif not f.get("terms"):
+            flash("Kubali Masharti na Sera ya Faragha ili uendelee.")
+        elif db.table("users").select("id").eq("email", email).execute().data:
+            flash("Barua pepe hii tayari imesajiliwa. Ingia badala yake.")
         else:
-            r = db.table("users").insert({"name": name, "email": email, "city": f.get("city", "Mwanza").strip() or "Mwanza",
-                "password_hash": generate_password_hash(f["password"])}).execute().data[0]
-            session["uid"] = r["id"]; return redirect(url_for("dashboard"))
+            r = db.table("users").insert({
+                "name": name,
+                "email": email,
+                "city": f.get("city", "Mwanza").strip() or "Mwanza",
+                "password_hash": generate_password_hash(f["password"]),
+            }).execute().data[0]
+            session.permanent = True
+            session["uid"] = r["id"]
+            return redirect(url_for("dashboard"))
     return render_template("auth.html", mode="register")
 
 @app.route("/login", methods=["GET", "POST"])
@@ -93,25 +128,36 @@ def login():
     if request.method == "POST":
         r = db.table("users").select("*").eq("email", request.form["email"].strip().lower()).limit(1).execute().data
         if r and check_password_hash(r[0]["password_hash"], request.form["password"]):
-            session["uid"] = r[0]["id"]; return redirect(url_for("dashboard"))
+            session.permanent = True
+            session["uid"] = r[0]["id"]
+            return redirect(url_for("dashboard"))
         flash("Barua pepe au nenosiri si sahihi.")
     return render_template("auth.html", mode="login")
 
 @app.route("/logout")
 def logout():
-    session.clear(); return redirect(url_for("index"))
+    session.clear()
+    return redirect(url_for("index"))
 
 @app.route("/privacy")
-def privacy(): return render_template("legal.html", page="privacy")
+def privacy():
+    return render_template("legal.html", page="privacy")
+
 @app.route("/terms")
-def terms(): return render_template("legal.html", page="terms")
+def terms():
+    return render_template("legal.html", page="terms")
 
 # ---------- content ----------
 def prayer_times(city):
     try:
-        t = requests.get("https://api.aladhan.com/v1/timingsByCity", params={"city": city, "country": "Tanzania", "method": 2}, timeout=5).json()["data"]["timings"]
+        t = requests.get(
+            "https://api.aladhan.com/v1/timingsByCity",
+            params={"city": city, "country": "Tanzania", "method": 2},
+            timeout=5,
+        ).json()["data"]["timings"]
         return {k: t[k] for k in ("Fajr", "Dhuhr", "Asr", "Maghrib", "Isha")}
-    except Exception: return None
+    except Exception:
+        return None
 
 @app.route("/dashboard")
 @login_required
@@ -126,13 +172,15 @@ def dashboard(u):
 
 @app.route("/courses")
 @login_required
-def courses(u): return render_template("courses.html", cs=db.table("courses").select("*").order("id").execute().data)
+def courses(u):
+    return render_template("courses.html", cs=db.table("courses").select("*").order("id").execute().data)
 
 @app.route("/course/<int:cid>")
 @login_required
 def course(u, cid):
     c = db.table("courses").select("*").eq("id", cid).limit(1).execute().data
-    if not c: abort(404)
+    if not c:
+        abort(404)
     ls = db.table("lessons").select("id,title,is_free,position").eq("course_id", cid).order("position").execute().data
     return render_template("course.html", c=c[0], ls=ls)
 
@@ -140,15 +188,28 @@ def course(u, cid):
 @login_required
 def lesson(u, lid):
     r = db.table("lessons").select("*").eq("id", lid).limit(1).execute().data
-    if not r: abort(404)
+    if not r:
+        abort(404)
     if not (r[0]["is_free"] or u["premium"] or u["is_admin"]):
-        flash("Somo hili ni la wanachama. Lipia ili kuendelea."); return redirect(url_for("pay"))
+        flash("Somo hili ni la wanachama. Lipia ili kuendelea.")
+        return redirect(url_for("pay"))
     return render_template("lesson.html", l=r[0])
 
-# ---------- ClickPesa ----------
+# ---------- ClickPesa + Manual payments ----------
 CP = "https://api.clickpesa.com/third-parties"
+
 def cp_headers():
-    t = requests.post(f"{CP}/generate-token", headers={"client-id": E("CLICKPESA_CLIENT_ID", ""), "api-key": E("CLICKPESA_API_KEY", "")}, timeout=15).json()["token"]
+    """Generate ClickPesa JWT token (valid ~1 hour)."""
+    r = requests.post(
+        f"{CP}/generate-token",
+        headers={"client-id": E("CLICKPESA_CLIENT_ID", ""), "api-key": E("CLICKPESA_API_KEY", "")},
+        timeout=15,
+    )
+    r.raise_for_status()
+    t = r.json().get("token") or ""
+    # Token from API already includes "Bearer " prefix in some responses
+    if t and not t.lower().startswith("bearer "):
+        t = "Bearer " + t
     return {"Authorization": t, "Content-Type": "application/json"}
 
 def activate(uid, days=30):
@@ -156,75 +217,204 @@ def activate(uid, days=30):
     start = max(NOW(), parse(usr["premium_until"]) or NOW())
     db.table("users").update({"premium_until": (start + dt.timedelta(days=days)).isoformat()}).eq("id", uid).execute()
 
+def approve_payment(p, payment_ref=None):
+    """Mark payment approved and activate membership (idempotent)."""
+    if p["status"] == "approved":
+        return "approved"
+    upd = {"status": "approved"}
+    if payment_ref:
+        upd["reference"] = payment_ref
+    db.table("payments").update(upd).eq("id", p["id"]).execute()
+    activate(p["user_id"])
+    return "approved"
+
+def reject_payment(p, message=None):
+    if p["status"] != "pending":
+        return p["status"]
+    upd = {"status": "rejected"}
+    if message:
+        upd["reference"] = (message or "")[:80]
+    db.table("payments").update(upd).eq("id", p["id"]).execute()
+    return "rejected"
+
 def check_payment(order):
+    """Query ClickPesa API for status (polling fallback)."""
     p = db.table("payments").select("*").eq("order_reference", order).limit(1).execute().data
-    if not p: return None
+    if not p:
+        return None
     p = p[0]
-    if p["status"] != "pending": return p["status"]
-    d = requests.get(f"{CP}/payments/{order}", headers=cp_headers(), timeout=15).json()
-    d = d[0] if isinstance(d, list) and d else d
-    st = (d or {}).get("status", "")
-    if st in ("SUCCESS", "SETTLED"):
-        db.table("payments").update({"status": "approved"}).eq("id", p["id"]).execute(); activate(p["user_id"]); return "approved"
-    if st == "FAILED":
-        db.table("payments").update({"status": "rejected"}).eq("id", p["id"]).execute(); return "rejected"
+    if p["status"] != "pending":
+        return p["status"]
+    try:
+        d = requests.get(f"{CP}/payments/{order}", headers=cp_headers(), timeout=15).json()
+        d = d[0] if isinstance(d, list) and d else d
+        st = (d or {}).get("status", "")
+        if st in ("SUCCESS", "SETTLED"):
+            return approve_payment(p, (d or {}).get("paymentReference"))
+        if st == "FAILED":
+            return reject_payment(p, (d or {}).get("message"))
+    except Exception:
+        pass
     return "pending"
 
 @app.route("/pay", methods=["GET", "POST"])
 @login_required
 def pay(u):
     if request.method == "POST":
-        n = re.sub(r"\D", "", request.form["phone"])
-        if n.startswith("0"): n = "255" + n[1:]
-        if not re.fullmatch(r"255\d{9}", n): flash("Weka namba sahihi ya simu, mfano 0712345678.")
+        method = request.form.get("method", "clickpesa")
+        if method == "manual":
+            ref = (request.form.get("reference") or "").strip()[:80]
+            phone = re.sub(r"\D", "", request.form.get("phone", ""))
+            if phone.startswith("0"):
+                phone = "255" + phone[1:]
+            if not ref:
+                flash("Weka namba ya kumbukumbu (reference) ya malipo.")
+            else:
+                order = "MN" + uuid.uuid4().hex[:16]
+                db.table("payments").insert({
+                    "user_id": u["id"],
+                    "amount": PRICE,
+                    "method": "Manual",
+                    "order_reference": order,
+                    "reference": ref,
+                    "phone": phone or None,
+                    "status": "pending",
+                }).execute()
+                flash("Ombi lako limetumwa. Admin atathibitisha hivi karibuni.")
+                return redirect(url_for("pay"))
         else:
-            order = "NY" + uuid.uuid4().hex[:18]
-            try:
-                r = requests.post(f"{CP}/payments/initiate-ussd-push-request", headers=cp_headers(), timeout=20,
-                    json={"amount": str(PRICE), "currency": "TZS", "orderReference": order, "phoneNumber": n})
-                ok = r.status_code in (200, 201)
-            except Exception: ok = False
-            if ok:
-                db.table("payments").insert({"user_id": u["id"], "amount": PRICE, "method": "ClickPesa", "order_reference": order, "phone": n}).execute()
-                return redirect(url_for("pay", ref=order))
-            flash("Imeshindwa kutuma ombi la malipo. Hakikisha namba ni sahihi, kisha jaribu tena.")
-    mine = db.table("payments").select("*").eq("user_id", u["id"]).order("id", desc=True).limit(5).execute().data
+            n = re.sub(r"\D", "", request.form.get("phone", ""))
+            if n.startswith("0"):
+                n = "255" + n[1:]
+            if not re.fullmatch(r"255\d{9}", n):
+                flash("Weka namba sahihi ya simu, mfano 0712345678.")
+            else:
+                # orderReference max 20 chars (ClickPesa limit)
+                order = ("NY" + uuid.uuid4().hex)[:20]
+                ok = False
+                err_msg = None
+                try:
+                    r = requests.post(
+                        f"{CP}/payments/initiate-ussd-push-request",
+                        headers=cp_headers(),
+                        timeout=20,
+                        json={
+                            "amount": str(PRICE),
+                            "currency": "TZS",
+                            "orderReference": order,
+                            "phoneNumber": n,
+                        },
+                    )
+                    ok = r.status_code in (200, 201)
+                    if not ok:
+                        try:
+                            err_msg = r.json().get("message") or r.text[:120]
+                        except Exception:
+                            err_msg = r.text[:120]
+                except Exception as e:
+                    err_msg = str(e)[:120]
+                if ok:
+                    db.table("payments").insert({
+                        "user_id": u["id"],
+                        "amount": PRICE,
+                        "method": "ClickPesa",
+                        "order_reference": order,
+                        "phone": n,
+                        "status": "pending",
+                    }).execute()
+                    return redirect(url_for("pay", ref=order))
+                flash("Imeshindwa kutuma ombi la malipo. " + (err_msg or "Jaribu tena au tumia malipo ya mkono."))
+    mine = db.table("payments").select("*").eq("user_id", u["id"]).order("id", desc=True).limit(8).execute().data
     return render_template("pay.html", mine=mine, ref=request.args.get("ref"))
 
 @app.route("/pay/status/<order>")
 @login_required
 def pay_status(u, order):
-    p = db.table("payments").select("user_id").eq("order_reference", order).limit(1).execute().data
-    if not p or p[0]["user_id"] != u["id"]: abort(404)
-    try: return jsonify(status=check_payment(order))
-    except Exception: return jsonify(status="pending")
+    p = db.table("payments").select("user_id,status").eq("order_reference", order).limit(1).execute().data
+    if not p or p[0]["user_id"] != u["id"]:
+        abort(404)
+    if p[0]["status"] != "pending":
+        return jsonify(status=p[0]["status"])
+    try:
+        return jsonify(status=check_payment(order))
+    except Exception:
+        return jsonify(status="pending")
 
 @app.route("/webhooks/clickpesa", methods=["POST"])
 def cp_webhook():
+    """
+    ClickPesa Application Webhook.
+    Configure in Dashboard → Settings → Developers → Application → Webhooks:
+      PAYMENT RECEIVED  →  https://YOUR_DOMAIN/webhooks/clickpesa
+      PAYMENT FAILED    →  https://YOUR_DOMAIN/webhooks/clickpesa
+    """
     j = request.get_json(silent=True) or {}
-    order = (j.get("data") or {}).get("orderReference") or j.get("orderReference")
-    if order:
-        try: check_payment(str(order))  # hali inathibitishwa moja kwa moja na ClickPesa
-        except Exception: pass
-    return "", 200
+    event = (j.get("event") or "").upper().strip()
+    data = j.get("data") if isinstance(j.get("data"), dict) else j
+    order = (data or {}).get("orderReference") or j.get("orderReference")
+    status = ((data or {}).get("status") or "").upper()
+    payment_ref = (data or {}).get("paymentReference")
+    message = (data or {}).get("message")
+
+    if not order:
+        return jsonify(ok=True, note="no orderReference"), 200
+
+    p = db.table("payments").select("*").eq("order_reference", str(order)).limit(1).execute().data
+    if not p:
+        # Unknown order — acknowledge so ClickPesa does not retry forever
+        return jsonify(ok=True, note="unknown order"), 200
+    p = p[0]
+
+    # Already finalized
+    if p["status"] in ("approved", "rejected"):
+        return jsonify(ok=True, status=p["status"]), 200
+
+    # Prefer event name; fall back to status field
+    success = event in ("PAYMENT RECEIVED", "PAYMENT.RECEIVED") or status in ("SUCCESS", "SETTLED")
+    failed = event in ("PAYMENT FAILED", "PAYMENT.FAILED") or status == "FAILED"
+
+    if success:
+        approve_payment(p, payment_ref)
+        return jsonify(ok=True, status="approved"), 200
+    if failed:
+        reject_payment(p, message)
+        return jsonify(ok=True, status="rejected"), 200
+
+    # Unknown intermediate status — keep pending, optionally re-query
+    try:
+        check_payment(str(order))
+    except Exception:
+        pass
+    return jsonify(ok=True, status="pending"), 200
 
 # ---------- community ----------
 def fmt(m):
-    return {"id": m["id"], "uid": m["user_id"], "name": (m.get("users") or {}).get("name", "Mtumiaji"),
-            "body": "Ujumbe huu umefutwa." if m["deleted"] else m["body"], "deleted": m["deleted"],
-            "reply_name": m.get("reply_name"), "reply_body": m.get("reply_body"), "at": m["created_at"]}
+    return {
+        "id": m["id"],
+        "uid": m["user_id"],
+        "name": (m.get("users") or {}).get("name", "Mtumiaji"),
+        "body": "Ujumbe huu umefutwa." if m["deleted"] else m["body"],
+        "deleted": m["deleted"],
+        "reply_name": m.get("reply_name"),
+        "reply_body": m.get("reply_body"),
+        "at": m["created_at"],
+    }
 
 @app.route("/community")
 @login_required
-def community(u): return render_template("community.html")
+def community(u):
+    return render_template("community.html")
 
 @app.route("/community/api")
 @login_required
 def community_api(u):
     after = request.args.get("after", type=int, default=0)
     q = db.table("messages").select("*, users(name)")
-    rows = (q.gt("id", after).order("id").limit(100).execute().data if after
-            else list(reversed(q.order("id", desc=True).limit(60).execute().data)))
+    rows = (
+        q.gt("id", after).order("id").limit(100).execute().data
+        if after
+        else list(reversed(q.order("id", desc=True).limit(60).execute().data))
+    )
     return jsonify([fmt(m) for m in rows])
 
 @app.route("/community/send", methods=["POST"])
@@ -232,11 +422,17 @@ def community_api(u):
 def community_send(u):
     j = request.get_json(silent=True) or {}
     body = (j.get("body") or "").strip()[:500]
-    if not body: abort(400)
+    if not body:
+        abort(400)
     row = {"user_id": u["id"], "body": body}
     if j.get("reply_to"):
         p = db.table("messages").select("body,deleted,users(name)").eq("id", int(j["reply_to"])).limit(1).execute().data
-        if p: row.update(reply_to=int(j["reply_to"]), reply_name=p[0]["users"]["name"], reply_body=("" if p[0]["deleted"] else p[0]["body"][:120]))
+        if p:
+            row.update(
+                reply_to=int(j["reply_to"]),
+                reply_name=p[0]["users"]["name"],
+                reply_body=("" if p[0]["deleted"] else p[0]["body"][:120]),
+            )
     db.table("messages").insert(row).execute()
     return jsonify(ok=True)
 
@@ -244,7 +440,8 @@ def community_send(u):
 @login_required
 def community_delete(u, mid):
     m = db.table("messages").select("user_id").eq("id", mid).limit(1).execute().data
-    if not m or not (m[0]["user_id"] == u["id"] or u["is_admin"]): abort(403)
+    if not m or not (m[0]["user_id"] == u["id"] or u["is_admin"]):
+        abort(403)
     db.table("messages").update({"deleted": True}).eq("id", mid).execute()
     return jsonify(ok=True)
 
@@ -253,98 +450,246 @@ def community_delete(u, mid):
 @login_required
 def profile(u):
     if request.method == "POST":
-        f = request.form; ph = re.sub(r"\D", "", f.get("phone", ""))
-        if ph.startswith("0"): ph = "255" + ph[1:]
-        db.table("users").update({"name": f["name"].strip() or u["name"], "city": f["city"].strip() or "Mwanza",
-            "bio": f.get("bio", "")[:200], "phone": ph or None,
-            "notify_email": bool(f.get("notify_email")), "notify_whatsapp": bool(f.get("notify_whatsapp") and ph)}).eq("id", u["id"]).execute()
-        flash("Wasifu umehifadhiwa."); return redirect(url_for("profile"))
+        f = request.form
+        ph = re.sub(r"\D", "", f.get("phone", ""))
+        if ph.startswith("0"):
+            ph = "255" + ph[1:]
+        db.table("users").update({
+            "name": f["name"].strip() or u["name"],
+            "city": f["city"].strip() or "Mwanza",
+            "bio": f.get("bio", "")[:200],
+            "phone": ph or None,
+            "notify_email": bool(f.get("notify_email")),
+            "notify_whatsapp": bool(f.get("notify_whatsapp") and ph),
+        }).eq("id", u["id"]).execute()
+        flash("Wasifu umehifadhiwa.")
+        return redirect(url_for("profile"))
     return render_template("profile.html", u=u)
 
 @app.route("/profile/password", methods=["POST"])
 @login_required
 def change_password(u):
     f = request.form
-    if not check_password_hash(u["password_hash"], f["old"]): flash("Nenosiri la sasa si sahihi.")
-    elif len(f["new"]) < 6: flash("Nenosiri jipya liwe na herufi 6 au zaidi.")
+    if not check_password_hash(u["password_hash"], f["old"]):
+        flash("Nenosiri la sasa si sahihi.")
+    elif len(f["new"]) < 6:
+        flash("Nenosiri jipya liwe na herufi 6 au zaidi.")
     else:
-        db.table("users").update({"password_hash": generate_password_hash(f["new"])}).eq("id", u["id"]).execute(); flash("Nenosiri limebadilishwa.")
+        db.table("users").update({"password_hash": generate_password_hash(f["new"])}).eq("id", u["id"]).execute()
+        flash("Nenosiri limebadilishwa.")
     return redirect(url_for("profile"))
 
 @app.route("/profile/delete", methods=["POST"])
 @login_required
 def delete_account(u):
     if not check_password_hash(u["password_hash"], request.form["password"]) or request.form.get("confirm", "").strip().upper() != "FUTA":
-        flash("Haikufutwa. Andika FUTA na nenosiri sahihi."); return redirect(url_for("profile"))
-    db.table("users").delete().eq("id", u["id"]).execute()  # malipo na jumbe vinafutwa pia (cascade)
-    session.clear(); flash("Akaunti yako na taarifa zako zimefutwa."); return redirect(url_for("index"))
+        flash("Haikufutwa. Andika FUTA na nenosiri sahihi.")
+        return redirect(url_for("profile"))
+    db.table("users").delete().eq("id", u["id"]).execute()
+    session.clear()
+    flash("Akaunti yako na taarifa zako zimefutwa.")
+    return redirect(url_for("index"))
 
 # ---------- reminders (Vercel Cron) ----------
 def send_email(to, subject, html):
-    if not E("RESEND_API_KEY"): return
-    requests.post("https://api.resend.com/emails", headers={"Authorization": "Bearer " + E("RESEND_API_KEY")}, timeout=15,
-        json={"from": E("MAIL_FROM", "NUYAS <onboarding@resend.dev>"), "to": [to], "subject": subject, "html": html})
+    if not E("RESEND_API_KEY"):
+        return
+    requests.post(
+        "https://api.resend.com/emails",
+        headers={"Authorization": "Bearer " + E("RESEND_API_KEY")},
+        timeout=15,
+        json={"from": E("MAIL_FROM", "NUYAS <onboarding@resend.dev>"), "to": [to], "subject": subject, "html": html},
+    )
 
 def send_whatsapp(phone, text):
-    if not (E("WA_TOKEN") and E("WA_PHONE_ID")): return
-    requests.post(f"https://graph.facebook.com/v20.0/{E('WA_PHONE_ID')}/messages", headers={"Authorization": "Bearer " + E("WA_TOKEN")}, timeout=15,
-        json={"messaging_product": "whatsapp", "to": phone, "type": "template",
-              "template": {"name": E("WA_TEMPLATE", "adhkar_reminder"), "language": {"code": "sw"},
-                           "components": [{"type": "body", "parameters": [{"type": "text", "text": text[:900]}]}]}})
+    if not (E("WA_TOKEN") and E("WA_PHONE_ID")):
+        return
+    requests.post(
+        f"https://graph.facebook.com/v20.0/{E('WA_PHONE_ID')}/messages",
+        headers={"Authorization": "Bearer " + E("WA_TOKEN")},
+        timeout=15,
+        json={
+            "messaging_product": "whatsapp",
+            "to": phone,
+            "type": "template",
+            "template": {
+                "name": E("WA_TEMPLATE", "adhkar_reminder"),
+                "language": {"code": "sw"},
+                "components": [{"type": "body", "parameters": [{"type": "text", "text": text[:900]}]}],
+            },
+        },
+    )
 
 @app.route("/cron/<kind>")
 def cron(kind):
-    if kind not in ("asubuhi", "jioni") or request.headers.get("Authorization") != "Bearer " + E("CRON_SECRET", "x"): abort(401)
+    if kind not in ("asubuhi", "jioni") or request.headers.get("Authorization") != "Bearer " + E("CRON_SECRET", "x"):
+        abort(401)
     items = db.table("adhkar").select("*").eq("type", kind).order("id").execute().data
-    if not items: return "no content"
+    if not items:
+        return "no content"
     a = items[NOW().timetuple().tm_yday % len(items)]
     us = db.table("users").select("email,name,phone,notify_email,notify_whatsapp").or_("notify_email.eq.true,notify_whatsapp.eq.true").execute().data
     sent = 0
     for x in us:
         try:
             if x["notify_email"]:
-                send_email(x["email"], f"Adhkar za {kind}", f'<div style="font-family:sans-serif;max-width:520px"><p>Salaam {escape(x["name"])},</p><p style="font-size:26px;direction:rtl;text-align:right">{escape(a["arabic"])}</p><p>{escape(a["swahili"])}</p><p><a href="{SITE}/dashboard">Fungua NUYAS</a></p><p style="color:#777;font-size:12px">Zima ukumbusho kwenye Wasifu.</p></div>')
+                send_email(
+                    x["email"],
+                    f"Adhkar za {kind}",
+                    f'<div style="font-family:sans-serif;max-width:520px"><p>Salaam {escape(x["name"])},</p><p style="font-size:26px;direction:rtl;text-align:right">{escape(a["arabic"])}</p><p>{escape(a["swahili"])}</p><p><a href="{SITE}/dashboard">Fungua NUYAS</a></p><p style="color:#777;font-size:12px">Zima ukumbusho kwenye Wasifu.</p></div>',
+                )
             if x["notify_whatsapp"] and x["phone"]:
                 send_whatsapp(x["phone"], f'{a["arabic"]} - {a["swahili"]}')
             sent += 1
-        except Exception: pass
+        except Exception:
+            pass
     return f"sent {sent}"
 
 # ---------- admin ----------
 @app.route("/admin")
 @admin_required
 def admin(u):
-    pays = db.table("payments").select("*, users(name,email)").order("id", desc=True).limit(15).execute().data
+    pays = db.table("payments").select("*, users(name,email)").order("id", desc=True).limit(30).execute().data
     try:
-        banners = db.table("banners").select("*").order("position").limit(20).execute().data
+        banners = db.table("banners").select("*").order("position").limit(30).execute().data
     except Exception:
         banners = []
     try:
-        qs = db.table("questions").select("id,body,created_at,active").order("id", desc=True).limit(10).execute().data
+        qs = db.table("questions").select("id,body,created_at,active,users(name)").order("id", desc=True).limit(20).execute().data
     except Exception:
         qs = []
-    return render_template("admin.html", pays=pays, cs=db.table("courses").select("id,title").execute().data, banners=banners, qs=qs)
+    courses = db.table("courses").select("id,title,description").order("id").execute().data
+    lessons = db.table("lessons").select("id,course_id,title,position,is_free").order("course_id").order("position").execute().data
+    adhkar = db.table("adhkar").select("*").order("type").order("id").limit(50).execute().data
+    return render_template(
+        "admin.html",
+        pays=pays,
+        cs=courses,
+        lessons=lessons,
+        banners=banners,
+        qs=qs,
+        adhkar=adhkar,
+    )
 
 @app.route("/admin/grant", methods=["POST"])
 @admin_required
 def admin_grant(u):
     r = db.table("users").select("id").eq("email", request.form["email"].strip().lower()).execute().data
-    if r: activate(r[0]["id"], int(request.form.get("days") or 30)); flash("Uanachama umetolewa.")
-    else: flash("Mtumiaji hajapatikana.")
-    return redirect(url_for("admin"))
+    if r:
+        activate(r[0]["id"], int(request.form.get("days") or 30))
+        flash("Uanachama umetolewa.")
+    else:
+        flash("Mtumiaji hajapatikana.")
+    return redirect(url_for("admin") + "#malipo")
+
+@app.route("/admin/payment/<int:pid>/<action>", methods=["POST"])
+@admin_required
+def admin_payment_action(u, pid, action):
+    if action not in ("approve", "reject"):
+        abort(400)
+    p = db.table("payments").select("*").eq("id", pid).limit(1).execute().data
+    if not p:
+        abort(404)
+    p = p[0]
+    if p["status"] != "pending":
+        flash("Malipo haya yameshahukumiwa.")
+        return redirect(url_for("admin") + "#malipo")
+    if action == "approve":
+        db.table("payments").update({"status": "approved"}).eq("id", pid).execute()
+        activate(p["user_id"])
+        flash("Malipo yamethibitishwa na uanachama umewekwa.")
+    else:
+        db.table("payments").update({"status": "rejected"}).eq("id", pid).execute()
+        flash("Malipo yamekataliwa.")
+    return redirect(url_for("admin") + "#malipo")
 
 @app.route("/admin/add/<kind>", methods=["POST"])
 @admin_required
 def admin_add(u, kind):
     f = request.form
-    if kind == "adhkar": db.table("adhkar").insert({"type": f["type"], "arabic": f["arabic"], "swahili": f["swahili"], "source": f.get("source")}).execute()
-    elif kind == "course": db.table("courses").insert({"title": f["title"], "description": f.get("description")}).execute()
-    elif kind == "lesson": db.table("lessons").insert({"course_id": int(f["course_id"]), "title": f["title"], "body": f.get("body"),
-        "audio_url": f.get("audio_url") or None, "position": int(f.get("position") or 1), "is_free": f.get("is_free") == "on"}).execute()
-    else: abort(400)
-    flash("Imeongezwa."); return redirect(url_for("admin"))
+    if kind == "adhkar":
+        db.table("adhkar").insert({
+            "type": f["type"],
+            "arabic": f["arabic"],
+            "swahili": f["swahili"],
+            "source": f.get("source"),
+        }).execute()
+        flash("Adhkar imeongezwa.")
+    elif kind == "course":
+        db.table("courses").insert({"title": f["title"], "description": f.get("description")}).execute()
+        flash("Kozi imeongezwa.")
+    elif kind == "lesson":
+        body = f.get("body") or ""
+        db.table("lessons").insert({
+            "course_id": int(f["course_id"]),
+            "title": f["title"],
+            "body": body,
+            "audio_url": f.get("audio_url") or None,
+            "position": int(f.get("position") or 1),
+            "is_free": f.get("is_free") == "on",
+        }).execute()
+        flash("Somo limeongezwa.")
+    else:
+        abort(400)
+    return redirect(url_for("admin") + "#masomo")
 
+@app.route("/admin/lesson/<int:lid>/edit", methods=["GET", "POST"])
+@admin_required
+def admin_edit_lesson(u, lid):
+    r = db.table("lessons").select("*").eq("id", lid).limit(1).execute().data
+    if not r:
+        abort(404)
+    lesson = r[0]
+    if request.method == "POST":
+        f = request.form
+        db.table("lessons").update({
+            "title": f["title"].strip(),
+            "body": f.get("body") or "",
+            "audio_url": f.get("audio_url") or None,
+            "position": int(f.get("position") or 1),
+            "is_free": f.get("is_free") == "on",
+            "course_id": int(f["course_id"]),
+        }).eq("id", lid).execute()
+        flash("Somo limesasishwa.")
+        return redirect(url_for("admin") + "#masomo")
+    cs = db.table("courses").select("id,title").order("id").execute().data
+    return render_template("admin_edit_lesson.html", lesson=lesson, cs=cs)
 
+@app.route("/admin/lesson/<int:lid>/delete", methods=["POST"])
+@admin_required
+def admin_delete_lesson(u, lid):
+    db.table("lessons").delete().eq("id", lid).execute()
+    flash("Somo limefutwa.")
+    return redirect(url_for("admin") + "#masomo")
+
+@app.route("/admin/course/<int:cid>/delete", methods=["POST"])
+@admin_required
+def admin_delete_course(u, cid):
+    db.table("courses").delete().eq("id", cid).execute()
+    flash("Kozi imefutwa (pamoja na masomo yake).")
+    return redirect(url_for("admin") + "#masomo")
+
+@app.route("/admin/adhkar/<int:aid>/delete", methods=["POST"])
+@admin_required
+def admin_delete_adhkar(u, aid):
+    db.table("adhkar").delete().eq("id", aid).execute()
+    flash("Adhkar imefutwa.")
+    return redirect(url_for("admin") + "#adhkar")
+
+@app.route("/admin/question/<int:qid>/toggle", methods=["POST"])
+@admin_required
+def admin_question_toggle(u, qid):
+    r = db.table("questions").select("active").eq("id", qid).limit(1).execute().data
+    if r:
+        db.table("questions").update({"active": not r[0]["active"]}).eq("id", qid).execute()
+    return redirect(url_for("admin") + "#maswali")
+
+@app.route("/admin/question/<int:qid>/delete", methods=["POST"])
+@admin_required
+def admin_question_delete(u, qid):
+    db.table("questions").delete().eq("id", qid).execute()
+    flash("Swali limefutwa.")
+    return redirect(url_for("admin") + "#maswali")
 
 # ---------- quran (free) ----------
 @app.route("/quran")
@@ -365,7 +710,6 @@ def surah(u, n):
         abort(404)
     try:
         ar = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/quran-uthmani", timeout=12).json()["data"]
-        # Tafsiri ya Kiswahili (Ali Muhsin Al-Barwani)
         sw_map = {}
         try:
             tr = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/sw.barwani", timeout=12).json()["data"]
@@ -393,20 +737,30 @@ def surah(u, n):
         return redirect(url_for("quran"))
     return render_template("surah.html", surah=surah_meta, ayahs=ayahs)
 
-
-
-# ---------- maswali (Q&A channel) ----------
+# ---------- maswali (Q&A) — users can ask too ----------
 @app.route("/maswali")
 @login_required
 def maswali(u):
-    qs = db.table("questions").select("*, users(name)").eq("active", True).order("id", desc=True).limit(30).execute().data
+    qs = db.table("questions").select("*, users(name)").eq("active", True).order("id", desc=True).limit(40).execute().data
     return render_template("maswali.html", qs=qs)
+
+@app.route("/maswali/uliza", methods=["POST"])
+@login_required
+def uliza_swali(u):
+    body = (request.form.get("body") or "").strip()[:1000]
+    if not body:
+        flash("Andika swali lako.")
+        return redirect(url_for("maswali"))
+    db.table("questions").insert({"user_id": u["id"], "body": body, "active": True}).execute()
+    flash("Swali lako limewekwa. Asante!")
+    return redirect(url_for("maswali"))
 
 @app.route("/maswali/<int:qid>")
 @login_required
 def swali(u, qid):
     q = db.table("questions").select("*, users(name)").eq("id", qid).limit(1).execute().data
-    if not q: abort(404)
+    if not q:
+        abort(404)
     ans = db.table("answers").select("*, users(name)").eq("question_id", qid).eq("deleted", False).order("id").execute().data
     return render_template("swali.html", q=q[0], answers=ans)
 
@@ -415,9 +769,11 @@ def swali(u, qid):
 def jibu_swali(u, qid):
     body = (request.form.get("body") or "").strip()[:800]
     if not body:
-        flash("Andika jibu."); return redirect(url_for("swali", qid=qid))
+        flash("Andika jibu.")
+        return redirect(url_for("swali", qid=qid))
     q = db.table("questions").select("id").eq("id", qid).eq("active", True).limit(1).execute().data
-    if not q: abort(404)
+    if not q:
+        abort(404)
     db.table("answers").insert({"question_id": qid, "user_id": u["id"], "body": body}).execute()
     flash("Jibu limewasilishwa.")
     return redirect(url_for("swali", qid=qid))
@@ -429,7 +785,7 @@ def admin_swali(u):
     if body:
         db.table("questions").insert({"user_id": u["id"], "body": body}).execute()
         flash("Swali limewekwa.")
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin") + "#maswali")
 
 @app.route("/admin/banner", methods=["POST"])
 @admin_required
@@ -444,30 +800,32 @@ def admin_banner(u):
         ext = (file.filename.rsplit(".", 1)[-1] or "jpg").lower()
         if ext not in ("jpg", "jpeg", "png", "webp", "gif"):
             flash("Aina ya picha hairuhusiwi. Tumia JPG, PNG au WebP.")
-            return redirect(url_for("admin"))
+            return redirect(url_for("admin") + "#banner")
         path = f"{uuid.uuid4().hex}.{ext}"
         data = file.read()
         try:
             db.storage.from_("banners").upload(path, data, {"content-type": file.content_type or "image/jpeg", "upsert": "true"})
             img = db.storage.from_("banners").get_public_url(path)
-        except Exception as e:
-            # jaribu kuunda bucket kama haipo
+        except Exception:
             try:
                 db.storage.create_bucket("banners", options={"public": True})
                 db.storage.from_("banners").upload(path, data, {"content-type": file.content_type or "image/jpeg", "upsert": "true"})
                 img = db.storage.from_("banners").get_public_url(path)
             except Exception as e2:
-                flash(f"Upload imeshindikana: {e2}. Weka URL badala yake au unda bucket 'banners' (public) kwenye Supabase Storage.")
-                return redirect(url_for("admin"))
+                flash(f"Upload imeshindikana: {e2}.")
+                return redirect(url_for("admin") + "#banner")
     if not img:
         flash("Weka picha (upload) au URL.")
-        return redirect(url_for("admin"))
+        return redirect(url_for("admin") + "#banner")
     db.table("banners").insert({
-        "title": title, "image_url": img, "link_url": link,
-        "position": pos, "active": True,
+        "title": title,
+        "image_url": img,
+        "link_url": link,
+        "position": pos,
+        "active": True,
     }).execute()
     flash("Banner imeongezwa.")
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin") + "#banner")
 
 @app.route("/admin/banner/toggle/<int:bid>", methods=["POST"])
 @admin_required
@@ -475,14 +833,22 @@ def admin_banner_toggle(u, bid):
     r = db.table("banners").select("active").eq("id", bid).limit(1).execute().data
     if r:
         db.table("banners").update({"active": not r[0]["active"]}).eq("id", bid).execute()
-    return redirect(url_for("admin"))
+    return redirect(url_for("admin") + "#banner")
 
+@app.route("/admin/banner/<int:bid>/delete", methods=["POST"])
+@admin_required
+def admin_banner_delete(u, bid):
+    db.table("banners").delete().eq("id", bid).execute()
+    flash("Banner imefutwa.")
+    return redirect(url_for("admin") + "#banner")
 
 # ---------- PWA ----------
 @app.route("/sw.js")
 def sw():
     r = send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript")
-    r.headers["Cache-Control"] = "no-cache"; r.headers["Service-Worker-Allowed"] = "/"; return r
+    r.headers["Cache-Control"] = "no-cache"
+    r.headers["Service-Worker-Allowed"] = "/"
+    return r
 
 @app.route("/manifest.webmanifest")
 def manifest():

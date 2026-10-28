@@ -1,84 +1,262 @@
 {% extends "base.html" %}{% block t %}Admin{% endblock %}{% block c %}
-<h2>Malipo ya hivi karibuni</h2>
-{% for p in pays %}
-<div class="card row">
-  <span><b>{{ p.users.name if p.users else '?' }}</b> <span class="muted">{{ p.users.email if p.users else '' }}</span><br>TSh {{ p.amount }} · {{ (p.created_at or '')[:10] }}</span>
-  <span class="tag">{{ p.status }}</span>
+<style>
+.adm-nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;position:sticky;top:60px;z-index:20;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line)}
+.adm-nav a{padding:8px 14px;border-radius:99px;font-size:13px;font-weight:600;text-decoration:none;color:var(--ink);background:var(--soft);border:1px solid var(--line)}
+.adm-nav a:hover,.adm-nav a.on{background:var(--g);color:#fff;border-color:var(--g)}
+.adm-sec{display:none;animation:fadeIn .25s ease}
+.adm-sec.on{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.adm-actions{display:flex;gap:6px;flex-wrap:wrap}
+.adm-actions form{margin:0}
+.adm-actions button{min-height:32px;padding:4px 12px;font-size:12px}
+.ql-toolbar.ql-snow{border-radius:12px 12px 0 0;border-color:var(--line)!important;background:var(--soft)}
+.ql-container.ql-snow{border-radius:0 0 12px 12px;border-color:var(--line)!important;min-height:160px;font-family:var(--font);font-size:15px}
+.ql-editor{min-height:150px}
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center}
+.stat b{display:block;font-size:22px;color:var(--g)}
+.stat span{font-size:12px;color:var(--mut)}
+</style>
+
+<div class="adm-nav" id="admNav">
+  <a href="#malipo" data-sec="malipo">Malipo</a>
+  <a href="#masomo" data-sec="masomo">Kozi & Masomo</a>
+  <a href="#adhkar" data-sec="adhkar">Adhkar</a>
+  <a href="#maswali" data-sec="maswali">Maswali</a>
+  <a href="#banner" data-sec="banner">Banner</a>
 </div>
-{% else %}<p class="muted">Hakuna malipo bado.</p>{% endfor %}
 
-<h2>Mpe mtu uanachama</h2>
-<form method="post" action="/admin/grant" class="card">
-  <input type="email" name="email" placeholder="Barua pepe ya mtumiaji" required>
-  <input type="number" name="days" value="30" style="margin-top:8px">
-  <button style="margin-top:10px">Toa uanachama</button>
-</form>
+{# ===== MALIPO ===== #}
+<section class="adm-sec" id="sec-malipo">
+  <div class="stat-row">
+    <div class="stat"><b>{{ pays|selectattr('status','equalto','pending')|list|length }}</b><span>Inasubiri</span></div>
+    <div class="stat"><b>{{ pays|selectattr('status','equalto','approved')|list|length }}</b><span>Imekamilika</span></div>
+    <div class="stat"><b>{{ pays|length }}</b><span>Jumla (30)</span></div>
+  </div>
 
-<h2>{{ icon('image',18) }} Banner (picha + slideshow)</h2>
-<form method="post" action="/admin/banner" class="card" enctype="multipart/form-data">
-  <label>Pakia picha</label>
-  <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif">
-  <label>au URL ya picha</label>
-  <input name="image_url" placeholder="https://...">
-  <label>Kichwa (hiari)</label>
-  <input name="title" placeholder="Mf. Ramadhan Offer">
-  <label>Kiungo (hiari)</label>
-  <input name="link_url" placeholder="https://... au /pay">
-  <label>Nafasi</label>
-  <input type="number" name="position" value="1">
-  <p class="muted" style="margin-top:8px">Banner zitaonyeshwa kwenye dashboard kama slideshow (sekunde 2 kila moja).</p>
-  <button style="margin-top:10px">Ongeza banner</button>
-</form>
-{% if banners %}
-{% for b in banners %}
-<div class="card row">
-  <span>
-    <img src="{{ b.image_url }}" alt="" style="max-width:120px;max-height:60px;border-radius:8px;object-fit:cover;vertical-align:middle">
-    <span class="muted">{{ b.title or 'Banner' }} · {{ 'hai' if b.active else 'imezimwa' }}</span>
-  </span>
-  <form method="post" action="/admin/banner/toggle/{{ b.id }}" style="margin:0">
-    <button type="submit" class="ghost" style="min-height:36px;padding:6px 12px">{{ 'Zima' if b.active else 'Washa' }}</button>
+  <h2>Toa uanachama</h2>
+  <form method="post" action="/admin/grant" class="card">
+    <input type="email" name="email" placeholder="Barua pepe ya mtumiaji" required>
+    <input type="number" name="days" value="30" min="1" style="margin-top:8px" placeholder="Siku">
+    <button style="margin-top:10px">Toa uanachama</button>
   </form>
-</div>
-{% endfor %}
-{% endif %}
 
-<h2>{{ icon('help',18) }} Uliza swali (channel)</h2>
-<form method="post" action="/admin/swali" class="card">
-  <textarea name="body" rows="3" placeholder="Andika swali lako kwa jamii..." required maxlength="1000"></textarea>
-  <button style="margin-top:10px">Chapisha swali</button>
-</form>
-{% if qs %}
-{% for q in qs %}
-<div class="card"><p style="margin:0">{{ q.body[:160] }}{% if q.body|length>160 %}…{% endif %}</p>
-<span class="muted" style="font-size:12px">{{ (q.created_at or '')[:10] }}</span></div>
-{% endfor %}
-{% endif %}
+  <h2>Malipo ya hivi karibuni</h2>
+  {% for p in pays %}
+  <div class="card">
+    <div class="row">
+      <span>
+        <b>{{ p.users.name if p.users else '?' }}</b>
+        <span class="muted">{{ p.users.email if p.users else '' }}</span><br>
+        TSh {{ p.amount }} · {{ p.method or '—' }} · {{ (p.created_at or '')[:16].replace('T',' ') }}
+        {% if p.reference %}<br><span class="muted">Ref: {{ p.reference }}</span>{% endif %}
+        {% if p.phone %}<br><span class="muted">Simu: {{ p.phone }}</span>{% endif %}
+      </span>
+      <span class="tag">{{ p.status }}</span>
+    </div>
+    {% if p.status == 'pending' %}
+    <div class="adm-actions" style="margin-top:10px">
+      <form method="post" action="/admin/payment/{{ p.id }}/approve">
+        <button type="submit" style="background:var(--g)">Thibitisha</button>
+      </form>
+      <form method="post" action="/admin/payment/{{ p.id }}/reject">
+        <button type="submit" class="ghost" style="color:var(--danger)">Kataa</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="muted">Hakuna malipo bado.</p>
+  {% endfor %}
+</section>
 
-<h2>Ongeza adhkar</h2>
-<form method="post" action="/admin/add/adhkar" class="card">
-  <select name="type"><option value="asubuhi">Asubuhi</option><option value="jioni">Jioni</option></select>
-  <input name="arabic" placeholder="Kiarabu" required style="margin-top:8px">
-  <textarea name="swahili" placeholder="Tafsiri ya Kiswahili" required style="margin-top:8px"></textarea>
-  <input name="source" placeholder="Rejea (mf. Hisnul Muslim)" style="margin-top:8px">
-  <button style="margin-top:10px">Ongeza adhkar</button>
-</form>
+{# ===== KOZI & MASOMO ===== #}
+<section class="adm-sec" id="sec-masomo">
+  <h2>Ongeza kozi</h2>
+  <form method="post" action="/admin/add/course" class="card">
+    <input name="title" placeholder="Jina la kozi" required>
+    <textarea name="description" placeholder="Maelezo mafupi" style="margin-top:8px"></textarea>
+    <button style="margin-top:10px">Ongeza kozi</button>
+  </form>
 
-<h2>Ongeza kozi</h2>
-<form method="post" action="/admin/add/course" class="card">
-  <input name="title" placeholder="Jina la kozi" required>
-  <textarea name="description" placeholder="Maelezo" style="margin-top:8px"></textarea>
-  <button style="margin-top:10px">Ongeza kozi</button>
-</form>
+  <h2>Ongeza somo</h2>
+  <form method="post" action="/admin/add/lesson" class="card" id="lessonForm">
+    <select name="course_id" required>
+      {% for c in cs %}<option value="{{ c.id }}">{{ c.title }}</option>{% endfor %}
+    </select>
+    <input name="title" placeholder="Kichwa cha somo" required style="margin-top:8px">
+    <label style="margin-top:10px;display:block;font-weight:600">Maudhui</label>
+    <div id="editor"></div>
+    <input type="hidden" name="body" id="bodyInput">
+    <input name="audio_url" placeholder="Kiungo cha sauti (hiari)" style="margin-top:8px">
+    <input name="position" type="number" value="1" style="margin-top:8px" placeholder="Nafasi">
+    <label class="chk"><input type="checkbox" name="is_free"> Somo la bure</label>
+    <button type="submit" style="margin-top:10px">Ongeza somo</button>
+  </form>
 
-<h2>Ongeza somo</h2>
-<form method="post" action="/admin/add/lesson" class="card">
-  <select name="course_id">{% for c in cs %}<option value="{{ c.id }}">{{ c.title }}</option>{% endfor %}</select>
-  <input name="title" placeholder="Kichwa cha somo" required style="margin-top:8px">
-  <textarea name="body" rows="5" placeholder="Maudhui" style="margin-top:8px"></textarea>
-  <input name="audio_url" placeholder="Kiungo cha sauti (hiari)" style="margin-top:8px">
-  <input name="position" type="number" value="1" style="margin-top:8px">
-  <label class="chk"><input type="checkbox" name="is_free"> Somo la bure</label>
-  <button>Ongeza somo</button>
-</form>
+  <h2>Kozi zilizopo</h2>
+  {% for c in cs %}
+  <div class="card row">
+    <span><b>{{ c.title }}</b><br><span class="muted">{{ c.description or '' }}</span></span>
+    <form method="post" action="/admin/course/{{ c.id }}/delete" onsubmit="return confirm('Futa kozi hii na masomo yake yote?')">
+      <button type="submit" class="ghost" style="color:var(--danger);min-height:36px">{{ icon('trash',16) }}</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="muted">Hakuna kozi bado.</p>
+  {% endfor %}
+
+  <h2>Masomo yote</h2>
+  {% for l in lessons %}
+  <div class="card">
+    <div class="row">
+      <span>
+        <b>{{ l.title }}</b>
+        <span class="tag" style="margin-left:6px">#{{ l.position }}</span>
+        {% if l.is_free %}<span class="tag">Bure</span>{% endif %}
+        <br><span class="muted">Kozi ID: {{ l.course_id }}</span>
+      </span>
+      <div class="adm-actions">
+        <a href="/admin/lesson/{{ l.id }}/edit" class="btn" style="min-height:36px;padding:6px 12px;text-decoration:none">{{ icon('edit',16) }} Hariri</a>
+        <form method="post" action="/admin/lesson/{{ l.id }}/delete" onsubmit="return confirm('Futa somo hili?')">
+          <button type="submit" class="ghost" style="color:var(--danger);min-height:36px">{{ icon('trash',16) }}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <p class="muted">Hakuna masomo bado.</p>
+  {% endfor %}
+</section>
+
+{# ===== ADHKAR ===== #}
+<section class="adm-sec" id="sec-adhkar">
+  <h2>Ongeza adhkar</h2>
+  <form method="post" action="/admin/add/adhkar" class="card">
+    <select name="type"><option value="asubuhi">Asubuhi</option><option value="jioni">Jioni</option></select>
+    <input name="arabic" placeholder="Kiarabu" required style="margin-top:8px" dir="rtl">
+    <textarea name="swahili" placeholder="Tafsiri ya Kiswahili" required style="margin-top:8px"></textarea>
+    <input name="source" placeholder="Rejea (mf. Hisnul Muslim)" style="margin-top:8px">
+    <button style="margin-top:10px">Ongeza adhkar</button>
+  </form>
+
+  <h2>Adhkar zilizopo</h2>
+  {% for a in adhkar %}
+  <div class="card row">
+    <span>
+      <span class="tag">{{ a.type }}</span>
+      <div style="font-size:18px;direction:rtl;margin:6px 0">{{ a.arabic }}</div>
+      <span class="muted">{{ a.swahili[:80] }}{% if a.swahili|length > 80 %}…{% endif %}</span>
+    </span>
+    <form method="post" action="/admin/adhkar/{{ a.id }}/delete" onsubmit="return confirm('Futa?')">
+      <button type="submit" class="ghost" style="color:var(--danger);min-height:36px">{{ icon('trash',16) }}</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="muted">Hakuna adhkar.</p>
+  {% endfor %}
+</section>
+
+{# ===== MASWALI ===== #}
+<section class="adm-sec" id="sec-maswali">
+  <h2>Chapisha swali</h2>
+  <form method="post" action="/admin/swali" class="card">
+    <textarea name="body" rows="3" placeholder="Andika swali..." required maxlength="1000"></textarea>
+    <button style="margin-top:10px">Chapisha</button>
+  </form>
+
+  <h2>Maswali yaliyopo</h2>
+  {% for q in qs %}
+  <div class="card">
+    <div class="row">
+      <span>
+        <span class="tag">{{ 'Hai' if q.active else 'Imefichwa' }}</span>
+        <p style="margin:8px 0 4px">{{ q.body[:200] }}{% if q.body|length > 200 %}…{% endif %}</p>
+        <span class="muted" style="font-size:12px">{{ (q.users.name if q.users else 'Admin') }} · {{ (q.created_at or '')[:10] }}</span>
+      </span>
+      <div class="adm-actions">
+        <form method="post" action="/admin/question/{{ q.id }}/toggle">
+          <button type="submit" class="ghost" style="min-height:36px">{{ 'Ficha' if q.active else 'Onyesha' }}</button>
+        </form>
+        <form method="post" action="/admin/question/{{ q.id }}/delete" onsubmit="return confirm('Futa swali?')">
+          <button type="submit" class="ghost" style="color:var(--danger);min-height:36px">{{ icon('trash',16) }}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <p class="muted">Hakuna maswali.</p>
+  {% endfor %}
+</section>
+
+{# ===== BANNER ===== #}
+<section class="adm-sec" id="sec-banner">
+  <h2>Ongeza banner</h2>
+  <form method="post" action="/admin/banner" class="card" enctype="multipart/form-data">
+    <label>Pakia picha</label>
+    <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif">
+    <label>au URL</label>
+    <input name="image_url" placeholder="https://...">
+    <label>Kichwa</label>
+    <input name="title" placeholder="Kichwa cha banner">
+    <label>Kiungo</label>
+    <input name="link_url" placeholder="/pay au https://...">
+    <label>Nafasi</label>
+    <input type="number" name="position" value="1">
+    <button style="margin-top:10px">Ongeza banner</button>
+  </form>
+
+  {% for b in banners %}
+  <div class="card row">
+    <span>
+      <img src="{{ b.image_url }}" alt="" style="max-width:120px;max-height:60px;border-radius:8px;object-fit:cover;vertical-align:middle">
+      <span class="muted">{{ b.title or 'Banner' }} · {{ 'hai' if b.active else 'imezimwa' }}</span>
+    </span>
+    <div class="adm-actions">
+      <form method="post" action="/admin/banner/toggle/{{ b.id }}">
+        <button type="submit" class="ghost" style="min-height:36px">{{ 'Zima' if b.active else 'Washa' }}</button>
+      </form>
+      <form method="post" action="/admin/banner/{{ b.id }}/delete" onsubmit="return confirm('Futa banner?')">
+        <button type="submit" class="ghost" style="color:var(--danger);min-height:36px">{{ icon('trash',16) }}</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<script>
+(function(){
+  const secs = document.querySelectorAll('.adm-sec');
+  const navs = document.querySelectorAll('#admNav a');
+  function show(id){
+    secs.forEach(s => s.classList.toggle('on', s.id === 'sec-'+id));
+    navs.forEach(a => a.classList.toggle('on', a.dataset.sec === id));
+    history.replaceState(null,'','#'+id);
+  }
+  navs.forEach(a => a.addEventListener('click', e => { e.preventDefault(); show(a.dataset.sec); }));
+  const hash = (location.hash || '#malipo').slice(1);
+  show(['malipo','masomo','adhkar','maswali','banner'].includes(hash) ? hash : 'malipo');
+
+  // Quill editor for new lesson
+  const ed = document.getElementById('editor');
+  if(ed){
+    const quill = new Quill('#editor', {
+      theme: 'snow',
+      modules: { toolbar: [
+        ['bold','italic','underline'],
+        [{header:[1,2,3,false]}],
+        [{list:'ordered'},{list:'bullet'}],
+        ['link'],
+        ['clean']
+      ]},
+      placeholder: 'Andika maudhui ya somo…'
+    });
+    document.getElementById('lessonForm').addEventListener('submit', function(){
+      document.getElementById('bodyInput').value = quill.root.innerHTML;
+    });
+  }
+})();
+</script>
 {% endblock %}

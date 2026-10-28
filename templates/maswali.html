@@ -1,6 +1,11 @@
 {% extends "base.html" %}{% block t %}Maswali{% endblock %}{% block c %}
 <h2>Maswali na Majibu</h2>
-<p class="muted">Admin anauliza. Wewe jibu. Kama channel ya kujifunza pamoja.</p>
+<p class="muted">Uliza swali au jibu maswali ya wengine. Kujifunza pamoja.</p>
+
+<form method="post" action="/maswali/uliza" class="card" style="margin-bottom:18px">
+  <textarea name="body" rows="3" placeholder="Andika swali lako hapa..." required maxlength="1000"></textarea>
+  <button style="margin-top:10px">{{ icon('send',16) }} Tuma swali</button>
+</form>
 
 {% for q in qs %}
 <a href="/maswali/{{ q.id }}" style="text-decoration:none;color:inherit">
@@ -9,11 +14,11 @@
       <span class="tag">{{ icon('help',14) }} Swali</span>
       <span class="muted" style="font-size:12px">{{ (q.created_at or '')[:10] }}</span>
     </div>
-    <p style="margin:10px 0 4px;font-weight:600">{{ q.body[:200] }}{% if q.body|length > 200 %}…{% endif %}</p>
-    <span class="muted" style="font-size:13px">na {{ (q.users or {}).name or 'Admin' }}</span>
+    <p style="margin:10px 0 4px;font-weight:600">{{ q.body[:220] }}{% if q.body|length > 220 %}…{% endif %}</p>
+    <span class="muted" style="font-size:13px">na {{ (q.users or {}).name or 'Mtumiaji' }}</span>
   </div>
 </a>
 {% else %}
-<div class="card"><p class="muted">Hakuna maswali bado. Admin ataweka hivi karibuni.</p></div>
+<div class="card"><p class="muted">Hakuna maswali bado. Kuwa wa kwanza kuuliza!</p></div>
 {% endfor %}
 {% endblock %}
