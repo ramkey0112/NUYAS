@@ -1,9 +1,0 @@
-{% extends "base.html" %}{% block c %}
-<h2>{{ "Fungua akaunti" if mode=="register" else "Ingia" }}</h2>
-<form method="post" class="card">
-{% if mode=="register" %}<label>Jina</label><input name="name" autocomplete="name" required>
-<label>Mji unaoishi</label><input name="city" value="Mwanza">{% endif %}
-<label>Barua pepe</label><input type="email" name="email" autocomplete="email" required>
-<label>Nenosiri</label><input type="password" name="password" minlength="6" autocomplete="{{ 'new-password' if mode=='register' else 'current-password' }}" required>
-{% if mode=="register" %}<label class="chk"><input type="checkbox" name="terms" required> Nakubali <a href="/terms">Masharti</a> na <a href="/privacy">Sera ya Faragha</a></label>{% endif %}
-<button>{{ "Jisajili" if mode=="register" else "Ingia" }}</button></form>{% endblock %}
