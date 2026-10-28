@@ -1,3 +1,0 @@
-{% extends "base.html" %}{% block c %}<h2>Kozi</h2>
-{% for c in cs %}<a href="/course/{{ c.id }}" style="text-decoration:none;color:inherit"><div class="card"><b>{{ c.title }}</b><p class="muted">{{ c.description }}</p></div></a>
-{% else %}<p class="muted">Kozi zinakuja hivi karibuni.</p>{% endfor %}{% endblock %}
