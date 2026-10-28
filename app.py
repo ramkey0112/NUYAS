@@ -36,6 +36,7 @@ _I = {
  "sliders": '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
  "x": '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
  "refresh": '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
+ "play": '<polygon points="5 3 19 12 5 21 5 3"/>',
 }
 @app.template_global()
 def icon(n, s=20):
@@ -328,6 +329,59 @@ def admin_add(u, kind):
         "audio_url": f.get("audio_url") or None, "position": int(f.get("position") or 1), "is_free": f.get("is_free") == "on"}).execute()
     else: abort(400)
     flash("Imeongezwa."); return redirect(url_for("admin"))
+
+
+
+# ---------- quran (free) ----------
+@app.route("/quran")
+@login_required
+def quran(u):
+    try:
+        r = requests.get("https://api.alquran.cloud/v1/surah", timeout=10).json()
+        surahs = r.get("data") or []
+    except Exception:
+        surahs = []
+        flash("Imeshindikana kupakia orodha ya surah. Jaribu tena.")
+    return render_template("quran.html", surahs=surahs)
+
+@app.route("/quran/<int:n>")
+@login_required
+def surah(u, n):
+    if n < 1 or n > 114:
+        abort(404)
+    try:
+        # Arabic text
+        ar = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/quran-uthmani", timeout=12).json()["data"]
+        # Swahili translation (Abubakar) if available, else English Sahih International as fallback
+        try:
+            tr = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/sw.abubakar", timeout=10).json()["data"]
+            translations = {a["numberInSurah"]: a["text"] for a in tr["ayahs"]}
+        except Exception:
+            try:
+                tr = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/en.sahih", timeout=10).json()["data"]
+                translations = {a["numberInSurah"]: a["text"] for a in tr["ayahs"]}
+            except Exception:
+                translations = {}
+        ayahs = []
+        for a in ar["ayahs"]:
+            ayahs.append({
+                "number": a["number"],
+                "numberInSurah": a["numberInSurah"],
+                "text": a["text"],
+                "translation": translations.get(a["numberInSurah"], "")
+            })
+        surah_meta = {
+            "number": ar["number"],
+            "name": ar["name"],
+            "englishName": ar["englishName"],
+            "englishNameTranslation": ar["englishNameTranslation"],
+            "numberOfAyahs": ar["numberOfAyahs"],
+            "revelationType": ar["revelationType"],
+        }
+    except Exception as e:
+        flash("Imeshindikana kupakia surah. Jaribu tena.")
+        return redirect(url_for("quran"))
+    return render_template("surah.html", surah=surah_meta, ayahs=ayahs)
 
 
 # ---------- PWA ----------
