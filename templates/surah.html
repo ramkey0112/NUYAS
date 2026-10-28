@@ -1,15 +1,21 @@
 {% extends "base.html" %}{% block t %}{{ surah.englishName }} · Qurani{% endblock %}{% block c %}
 <div class="surah-top">
-  <a href="/quran" class="back">{{ icon('reply',18) }} Surah zote</a>
+  <a href="/quran" class="back">{{ icon('reply',16) }} Surah zote</a>
   <div class="st-head">
     <div class="st-ar">{{ surah.name }}</div>
     <h1>{{ surah.englishName }}</h1>
     <p class="muted">{{ surah.englishNameTranslation }} · {{ surah.numberOfAyahs }} aya · {{ surah.revelationType }}</p>
   </div>
+
+  <div class="q-controls">
+    <button type="button" id="fontDown" aria-label="Punguza herufi">A−</button>
+    <button type="button" id="fontUp" aria-label="Ongeza herufi">A+</button>
+  </div>
+
   <div class="player-bar card">
-    <button id="playAll" class="btn">{{ icon('play',18) }} <span>Sikiliza yote</span></button>
-    <button id="stopAll" class="ghost" style="display:none">{{ icon('x',18) }} Simamisha</button>
-    <span class="muted" id="nowPlaying"></span>
+    <button id="playAll" class="btn">{{ icon('play',16) }} <span>Sikiliza yote</span></button>
+    <button id="stopAll" class="ghost" style="display:none">{{ icon('x',16) }} Simamisha</button>
+    <span class="muted" id="nowPlaying" style="font-size:13px"></span>
   </div>
 </div>
 
@@ -23,11 +29,22 @@
   <div class="ayah-meta">
     <span class="anum">{{ a.numberInSurah }}</span>
     <button class="play-btn" data-g="{{ a.number }}" data-n="{{ a.numberInSurah }}" aria-label="Sikiliza aya {{ a.numberInSurah }}">
-      {{ icon('play',16) }}
+      {{ icon('play',15) }}
     </button>
   </div>
   <p class="ar ayah-ar">{{ a.text }}</p>
-  {% if a.translation %}<p class="ayah-tr">{{ a.translation }}</p>{% endif %}
+  {% if a.translation %}
+  <div class="ayah-tr">
+    <div class="ayah-tr-label">Tafsiri</div>
+    {{ a.translation }}
+  </div>
+  {% endif %}
+  {% if a.translation_en and a.translation_en != a.translation %}
+  <div class="ayah-tr" style="border-top:none;padding-top:4px;opacity:.85">
+    <div class="ayah-tr-label" style="color:var(--mut)">English</div>
+    {{ a.translation_en }}
+  </div>
+  {% endif %}
 </div>
 {% endfor %}
 </div>
@@ -39,9 +56,20 @@ const audio = document.getElementById('audio');
 const playAllBtn = document.getElementById('playAll');
 const stopAllBtn = document.getElementById('stopAll');
 const nowPlaying = document.getElementById('nowPlaying');
+const ayahsEl = document.getElementById('ayahs');
 let queue = [], qIdx = -1, currentBtn = null;
 
 const CDN = 'https://cdn.islamic.network/quran/audio/128/ar.alafasy/';
+
+/* Font size */
+let fontSize = parseInt(localStorage.getItem('quranFont') || '28', 10);
+function applyFont(){
+  document.querySelectorAll('.ayah-ar').forEach(el => el.style.fontSize = fontSize + 'px');
+  localStorage.setItem('quranFont', fontSize);
+}
+applyFont();
+document.getElementById('fontUp').onclick = () => { fontSize = Math.min(42, fontSize + 2); applyFont(); };
+document.getElementById('fontDown').onclick = () => { fontSize = Math.max(20, fontSize - 2); applyFont(); };
 
 function setPlaying(btn, on){
   if(currentBtn) currentBtn.classList.remove('playing');
@@ -61,8 +89,8 @@ function playAyah(globalNum, localNum, btn){
   nowPlaying.textContent = 'Aya ' + localNum;
 }
 
-document.querySelectorAll('.play-btn').forEach(btn=>{
-  btn.onclick = ()=>{
+document.querySelectorAll('.play-btn').forEach(btn => {
+  btn.onclick = () => {
     queue = []; qIdx = -1;
     playAllBtn.style.display = '';
     stopAllBtn.style.display = 'none';
@@ -70,8 +98,8 @@ document.querySelectorAll('.play-btn').forEach(btn=>{
   };
 });
 
-playAllBtn.onclick = ()=>{
-  queue = [...document.querySelectorAll('.play-btn')].map(b=>({g:b.dataset.g, n:b.dataset.n, btn:b}));
+playAllBtn.onclick = () => {
+  queue = [...document.querySelectorAll('.play-btn')].map(b => ({g:b.dataset.g, n:b.dataset.n, btn:b}));
   qIdx = 0;
   playAllBtn.style.display = 'none';
   stopAllBtn.style.display = '';
@@ -79,7 +107,7 @@ playAllBtn.onclick = ()=>{
   playAyah(item.g, item.n, item.btn);
 };
 
-stopAllBtn.onclick = ()=>{
+stopAllBtn.onclick = () => {
   audio.pause(); audio.src = '';
   queue = []; qIdx = -1;
   setPlaying(null, false);
@@ -88,8 +116,8 @@ stopAllBtn.onclick = ()=>{
   nowPlaying.textContent = '';
 };
 
-audio.onended = ()=>{
-  if(queue.length && qIdx < queue.length-1){
+audio.onended = () => {
+  if(queue.length && qIdx < queue.length - 1){
     qIdx++;
     const item = queue[qIdx];
     playAyah(item.g, item.n, item.btn);

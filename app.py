@@ -350,25 +350,34 @@ def surah(u, n):
     if n < 1 or n > 114:
         abort(404)
     try:
-        # Arabic text
         ar = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/quran-uthmani", timeout=12).json()["data"]
-        # Swahili translation (Abubakar) if available, else English Sahih International as fallback
-        try:
-            tr = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/sw.abubakar", timeout=10).json()["data"]
-            translations = {a["numberInSurah"]: a["text"] for a in tr["ayahs"]}
-        except Exception:
+        # Swahili translation
+        sw_map = {}
+        for ed in ("sw.abubakar", "sw.barwani"):
             try:
-                tr = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/en.sahih", timeout=10).json()["data"]
-                translations = {a["numberInSurah"]: a["text"] for a in tr["ayahs"]}
+                tr = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/{ed}", timeout=10).json()["data"]
+                sw_map = {a["numberInSurah"]: a["text"] for a in tr["ayahs"]}
+                if sw_map:
+                    break
             except Exception:
-                translations = {}
+                continue
+        # English fallback / secondary
+        en_map = {}
+        try:
+            tr = requests.get(f"https://api.alquran.cloud/v1/surah/{n}/en.sahih", timeout=10).json()["data"]
+            en_map = {a["numberInSurah"]: a["text"] for a in tr["ayahs"]}
+        except Exception:
+            pass
         ayahs = []
         for a in ar["ayahs"]:
+            sw = sw_map.get(a["numberInSurah"], "")
+            en = en_map.get(a["numberInSurah"], "")
             ayahs.append({
                 "number": a["number"],
                 "numberInSurah": a["numberInSurah"],
                 "text": a["text"],
-                "translation": translations.get(a["numberInSurah"], "")
+                "translation": sw or en,
+                "translation_en": en if sw else "",
             })
         surah_meta = {
             "number": ar["number"],
@@ -378,7 +387,7 @@ def surah(u, n):
             "numberOfAyahs": ar["numberOfAyahs"],
             "revelationType": ar["revelationType"],
         }
-    except Exception as e:
+    except Exception:
         flash("Imeshindikana kupakia surah. Jaribu tena.")
         return redirect(url_for("quran"))
     return render_template("surah.html", surah=surah_meta, ayahs=ayahs)
