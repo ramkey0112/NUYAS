@@ -1,5 +1,17 @@
 {% extends "base.html" %}{% block t %}Swali{% endblock %}{% block c %}
-<a href="/maswali" class="back">{{ icon('reply',16) }} Maswali yote</a>
+<style>
+.jm-tabs{display:flex;gap:8px;margin-bottom:14px}
+.jm-tabs a{flex:1;text-align:center;padding:10px 12px;border-radius:12px;font-weight:700;font-size:13.5px;text-decoration:none;color:var(--ink);
+  background:var(--soft);border:1px solid var(--line)}
+.jm-tabs a.on{background:var(--g);color:#fff;border-color:var(--g)}
+</style>
+
+<div class="jm-tabs">
+  <a href="/community">{{ icon('users',16) }} Chat</a>
+  <a href="/maswali" class="on">{{ icon('help',16) }} Maswali</a>
+</div>
+
+<a href="/maswali" style="display:inline-flex;align-items:center;gap:4px;margin-bottom:12px;text-decoration:none;color:var(--mut);font-size:13px;font-weight:600">{{ icon('reply',15) }} Orodha</a>
 
 <div class="card" style="border-color:color-mix(in srgb,var(--g) 40%,var(--line))">
   <div class="row">
@@ -7,7 +19,7 @@
     <span class="muted" style="font-size:12px">{{ (q.created_at or '')[:16].replace('T',' ') }}</span>
   </div>
   <p style="margin:12px 0 6px;font-size:16px;font-weight:600;line-height:1.5">{{ q.body }}</p>
-  <span class="muted" style="font-size:13px">na {{ (q.users or {}).name or 'Admin' }}</span>
+  <span class="muted" style="font-size:13px">{{ (q.users or {}).name or 'Mtumiaji' }}</span>
 </div>
 
 <h3>Majibu ({{ answers|length }})</h3>
@@ -20,12 +32,11 @@
   <p style="margin:8px 0 0;line-height:1.55">{{ a.body }}</p>
 </div>
 {% else %}
-<p class="muted">Hakuna majibu bado. Kuwa wa kwanza kujibu.</p>
+<div class="card"><p class="muted" style="margin:0">Hakuna majibu bado.</p></div>
 {% endfor %}
 
 <form method="post" action="/maswali/{{ q.id }}/jibu" class="card">
-  <label>Jibu lako</label>
-  <textarea name="body" rows="3" maxlength="800" placeholder="Andika jibu lako hapa..." required></textarea>
-  <button style="margin-top:10px">{{ icon('send',16) }} Tuma jibu</button>
+  <textarea name="body" rows="3" maxlength="800" placeholder="Andika jibu..." required></textarea>
+  <button style="margin-top:10px">{{ icon('send',16) }} Tuma</button>
 </form>
 {% endblock %}

@@ -82,6 +82,12 @@
     </div>
   </div>
 
+  {% if u.is_admin %}
+  <div class="actions">
+    <a class="btn-out" href="/admin" style="background:var(--g);color:#fff;border-color:var(--g)">{{ icon('sliders',16) }} Admin</a>
+  </div>
+  {% endif %}
+
   <div class="actions">
     <a class="btn-out" href="/logout">{{ icon('logout',16) }} Toka</a>
   </div>

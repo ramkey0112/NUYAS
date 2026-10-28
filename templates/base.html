@@ -512,7 +512,7 @@ html[data-theme="dark"] .anum { color: var(--g) }
         <a href="/quran" class="{{ 'on' if ep in ('quran','surah') }}">Qurani</a>
         <a href="/maswali" class="{{ 'on' if ep in ('maswali','swali') }}">Maswali</a>
         <a href="/courses" class="{{ 'on' if ep in ('courses','course','lesson') }}">Kozi</a>
-        <a href="/community" class="{{ 'on' if ep=='community' }}">Jamii</a>
+        <a href="/community" class="{{ 'on' if ep in ('community','maswali','swali') }}">Jamii</a>
         <a href="/pay" class="{{ 'on' if ep=='pay' }}">Uanachama</a>
         <a href="/profile" class="{{ 'on' if ep=='profile' }}">Wasifu</a>
         {% if user.is_admin %}<a href="/admin">Admin</a>{% endif %}
@@ -545,7 +545,7 @@ html[data-theme="dark"] .anum { color: var(--g) }
 <nav class="tabbar" aria-label="Menyu kuu">
   <a href="/dashboard" class="{{ 'on' if ep=='dashboard' }}">{{ icon('home') }}Nyumbani</a>
   <a href="/quran" class="{{ 'on' if ep in ('quran','surah') }}">{{ icon('book') }}Qurani</a>
-  <a href="/community" class="{{ 'on' if ep=='community' }}">{{ icon('users') }}Jamii</a>
+  <a href="/community" class="{{ 'on' if ep in ('community','maswali','swali') }}">{{ icon('users') }}Jamii</a>
   <a href="/courses" class="{{ 'on' if ep in ('courses','course','lesson') }}">{{ icon('book') }}Kozi</a>
   <a href="/profile" class="{{ 'on' if ep=='profile' }}">{{ icon('user') }}Wasifu</a>
 </nav>

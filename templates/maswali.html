@@ -1,32 +1,45 @@
 {% extends "base.html" %}{% block t %}Maswali{% endblock %}{% block c %}
 <style>
-.search-box{margin-bottom:14px}
-.search-box input{width:100%;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit}
+.jm-tabs{display:flex;gap:8px;margin-bottom:14px}
+.jm-tabs a{flex:1;text-align:center;padding:10px 12px;border-radius:12px;font-weight:700;font-size:13.5px;text-decoration:none;color:var(--ink);
+  background:var(--soft);border:1px solid var(--line)}
+.jm-tabs a.on{background:var(--g);color:#fff;border-color:var(--g)}
+.search-box{margin-bottom:12px}
+.search-box input{width:100%;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit}
+.q-card{display:block;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 18px -10px rgba(0,0,0,.12)}
+.q-card:active{transform:scale(.99)}
+.q-card .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.q-card .body{font-weight:600;font-size:14.5px;line-height:1.45;margin:0 0 8px}
+.q-card .meta{font-size:12.5px;color:var(--mut)}
+.ask-box textarea{width:100%;min-height:88px;border-radius:12px;border:1px solid var(--line);padding:12px;font:inherit;background:var(--bg);color:var(--ink);resize:vertical}
+.ask-box button{margin-top:10px;background:var(--g);color:#fff;border:none;border-radius:12px;padding:11px 18px;font-weight:700;cursor:pointer}
 </style>
-<h2>Maswali na Majibu</h2>
-<p class="muted">Uliza swali au jibu maswali ya wengine. Kujifunza pamoja.</p>
 
-<form method="post" action="/maswali/uliza" class="card" style="margin-bottom:14px">
-  <textarea name="body" rows="3" placeholder="Andika swali lako hapa..." required maxlength="1000"></textarea>
-  <button style="margin-top:10px">{{ icon('send',16) }} Tuma swali</button>
+<div class="jm-tabs">
+  <a href="/community">{{ icon('users',16) }} Chat</a>
+  <a href="/maswali" class="on">{{ icon('help',16) }} Maswali</a>
+</div>
+
+<form method="post" action="/maswali/uliza" class="card ask-box" style="margin-bottom:14px">
+  <textarea name="body" rows="3" placeholder="Andika swali lako..." required maxlength="1000"></textarea>
+  <button type="submit">{{ icon('send',16) }} Tuma</button>
 </form>
 
 <form class="search-box" method="get" action="/maswali">
-  <input type="search" name="q" value="{{ q or '' }}" placeholder="Tafuta maswali..." autocomplete="off">
+  <input type="search" name="q" value="{{ q or '' }}" placeholder="Tafuta..." autocomplete="off">
 </form>
 
-{% for q in qs %}
-<a href="/maswali/{{ q.id }}" style="text-decoration:none;color:inherit">
-  <div class="card">
-    <div class="row">
-      <span class="tag">{{ icon('help',14) }} Swali</span>
-      <span class="muted" style="font-size:12px">{{ (q.created_at or '')[:10] }}</span>
-    </div>
-    <p style="margin:10px 0 4px;font-weight:600">{{ q.body[:220] }}{% if q.body|length > 220 %}…{% endif %}</p>
-    <span class="muted" style="font-size:13px">na {{ (q.users or {}).name or 'Mtumiaji' }}</span>
+{% for item in qs %}
+<a href="/maswali/{{ item.id }}" class="q-card">
+  <div class="top">
+    <span class="tag">{{ icon('help',13) }} Swali</span>
+    <span class="meta">{{ (item.created_at or '')[:10] }}</span>
   </div>
+  <p class="body">{{ item.body[:220] }}{% if item.body|length > 220 %}…{% endif %}</p>
+  <span class="meta">{{ (item.users or {}).name or 'Mtumiaji' }}</span>
 </a>
 {% else %}
-<div class="card"><p class="muted">{% if q %}Hakuna matokeo ya "{{ q }}".{% else %}Hakuna maswali bado. Kuwa wa kwanza kuuliza!{% endif %}</p></div>
+<div class="card"><p class="muted" style="margin:0">{% if q %}Hakuna matokeo.{% else %}Hakuna maswali bado.{% endif %}</p></div>
 {% endfor %}
 {% endblock %}

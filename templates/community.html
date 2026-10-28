@@ -1,24 +1,77 @@
 {% extends "base.html" %}{% block t %}Jamii{% endblock %}{% block c %}
-<div class="chat"><div class="row"><h2 style="margin:0 0 6px">Jamii</h2><span class="muted" style="font-size:14px">Heshimu wengine. Hakuna matusi wala matangazo.</span></div>
-<div id="msgs" aria-live="polite"></div>
-<div id="rep"><span id="reptxt"></span><button class="ghost" style="padding:2px 8px;min-height:0" id="repx" aria-label="Ghairi">{{ icon('x',16) }}</button></div>
-<form id="f"><textarea id="t" maxlength="500" placeholder="Andika ujumbe" required></textarea><button aria-label="Tuma">{{ icon('send',20) }}</button></form></div>
+<style>
+.jm-tabs{display:flex;gap:8px;margin-bottom:12px}
+.jm-tabs a{flex:1;text-align:center;padding:10px 12px;border-radius:12px;font-weight:700;font-size:13.5px;text-decoration:none;color:var(--ink);
+  background:var(--soft);border:1px solid var(--line)}
+.jm-tabs a.on{background:var(--g);color:#fff;border-color:var(--g)}
+.chat{display:flex;flex-direction:column;height:calc(100dvh - 200px);min-height:360px}
+.chat #msgs{flex:1;overflow-y:auto;padding:8px 2px;display:flex;flex-direction:column;gap:8px}
+.chat .m{max-width:88%;padding:10px 12px;border-radius:14px 14px 14px 4px;background:var(--card);border:1px solid var(--line);align-self:flex-start}
+.chat .m.me{align-self:flex-end;background:var(--me);border-color:color-mix(in srgb,var(--g) 25%,var(--line));border-radius:14px 14px 4px 14px}
+.chat .m.del{opacity:.55}
+.chat .m .n{font-weight:700;font-size:12px;color:var(--g);margin-bottom:2px}
+.chat .m .q{font-size:12px;opacity:.75;border-left:2px solid var(--g);padding-left:8px;margin:4px 0 6px}
+.chat .m .a{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:11px;opacity:.65}
+.chat .m .a button{background:none;border:none;padding:2px;cursor:pointer;color:var(--mut)}
+.chat #rep{display:none;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;margin-bottom:6px;border-radius:10px;background:var(--soft);font-size:13px}
+.chat form{display:flex;gap:8px;align-items:flex-end}
+.chat form textarea{flex:1;min-height:44px;max-height:120px;resize:none;border-radius:14px;border:1px solid var(--line);padding:10px 12px;font:inherit;background:var(--card);color:var(--ink)}
+.chat form button{width:46px;height:46px;border-radius:14px;border:none;background:var(--g);color:#fff;display:grid;place-items:center;cursor:pointer;flex:none}
+</style>
+
+<div class="jm-tabs">
+  <a href="/community" class="on">{{ icon('users',16) }} Chat</a>
+  <a href="/maswali">{{ icon('help',16) }} Maswali</a>
+</div>
+
+<div class="chat">
+  <div id="msgs" aria-live="polite"></div>
+  <div id="rep"><span id="reptxt"></span><button class="ghost" style="padding:2px 8px;min-height:0" id="repx" aria-label="Ghairi">{{ icon('x',16) }}</button></div>
+  <form id="f">
+    <textarea id="t" maxlength="500" placeholder="Andika ujumbe..." required></textarea>
+    <button type="submit" aria-label="Tuma">{{ icon('send',20) }}</button>
+  </form>
+</div>
+
 <script>
 const ME={{ user.id|tojson }},ADM={{ user.is_admin|tojson }},IR={{ icon('reply',16)|tojson }},ID={{ icon('trash',16)|tojson }};
-let last=0,rt=null;const B=document.getElementById('msgs'),T=document.getElementById('t'),R=document.getElementById('rep');
+let last=0,rt=null;
+const B=document.getElementById('msgs'),T=document.getElementById('t'),R=document.getElementById('rep');
 const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e};
-function rm(m){const d=el('div','m'+(m.uid===ME?' me':'')+(m.deleted?' del':''));d.id='m'+m.id;
- if(m.uid!==ME)d.appendChild(el('div','n',m.name));
- if(m.reply_name){const q=el('div','q');q.textContent=m.reply_name+': '+(m.reply_body||'ujumbe uliofutwa');d.appendChild(q)}
- d.appendChild(el('div','',m.body));const a=el('div','a');a.appendChild(el('span','',new Date(m.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})));
- if(!m.deleted){const r=el('button');r.innerHTML=IR;r.setAttribute('aria-label','Jibu');r.onclick=()=>{rt=m.id;document.getElementById('reptxt').textContent='Unamjibu '+m.name;R.style.display='flex';T.focus()};a.appendChild(r);
-  if(m.uid===ME||ADM){const x=el('button');x.innerHTML=ID;x.setAttribute('aria-label','Futa');x.onclick=async()=>{if(confirm('Futa ujumbe huu?')){await fetch('/community/delete/'+m.id,{method:'POST'});d.className='m del';d.lastChild.remove();d.children[d.children.length-1].textContent='Ujumbe huu umefutwa.'}};a.appendChild(x)}}
- d.appendChild(a);return d}
-async function load(){try{const d=await(await fetch('/community/api?after='+last)).json();const end=B.scrollHeight-B.scrollTop-B.clientHeight<90||!last;
- d.forEach(m=>{last=Math.max(last,m.id);if(!document.getElementById('m'+m.id))B.appendChild(rm(m))});if(d.length&&end)B.scrollTop=B.scrollHeight}catch(e){}}
+function rm(m){
+  const d=el('div','m'+(m.uid===ME?' me':'')+(m.deleted?' del':''));d.id='m'+m.id;
+  if(m.uid!==ME)d.appendChild(el('div','n',m.name));
+  if(m.reply_name){const q=el('div','q');q.textContent=m.reply_name+': '+(m.reply_body||'…');d.appendChild(q)}
+  d.appendChild(el('div','',m.body));
+  const a=el('div','a');
+  a.appendChild(el('span','',new Date(m.at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})));
+  if(!m.deleted){
+    const r=el('button');r.innerHTML=IR;r.setAttribute('aria-label','Jibu');
+    r.onclick=()=>{rt=m.id;document.getElementById('reptxt').textContent='Jibu: '+m.name;R.style.display='flex';T.focus()};
+    a.appendChild(r);
+    if(m.uid===ME||ADM){
+      const x=el('button');x.innerHTML=ID;x.setAttribute('aria-label','Futa');
+      x.onclick=async()=>{if(confirm('Futa?')){await fetch('/community/delete/'+m.id,{method:'POST'});d.className='m del';d.querySelector('.a')?.remove();const b=d.children[d.children.length-1];if(b)b.textContent='Umefutwa.'}};
+      a.appendChild(x);
+    }
+  }
+  d.appendChild(a);return d;
+}
+async function load(){
+  try{
+    const d=await(await fetch('/community/api?after='+last)).json();
+    const end=B.scrollHeight-B.scrollTop-B.clientHeight<90||!last;
+    d.forEach(m=>{last=Math.max(last,m.id);if(!document.getElementById('m'+m.id))B.appendChild(rm(m))});
+    if(d.length&&end)B.scrollTop=B.scrollHeight;
+  }catch(e){}
+}
 document.getElementById('repx').onclick=()=>{rt=null;R.style.display='none'};
-document.getElementById('f').onsubmit=async e=>{e.preventDefault();const b=T.value.trim();if(!b)return;T.value='';
- await fetch('/community/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({body:b,reply_to:rt})});rt=null;R.style.display='none';load()};
+document.getElementById('f').onsubmit=async e=>{
+  e.preventDefault();const b=T.value.trim();if(!b)return;T.value='';
+  await fetch('/community/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({body:b,reply_to:rt})});
+  rt=null;R.style.display='none';load();
+};
 T.onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();document.getElementById('f').requestSubmit()}};
 load();setInterval(()=>{if(!document.hidden)load()},4000);
-</script>{% endblock %}
+</script>
+{% endblock %}
