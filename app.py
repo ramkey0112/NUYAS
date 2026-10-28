@@ -174,7 +174,8 @@ def dashboard(u):
 @login_required
 def courses(u):
     q = (request.args.get("q") or "").strip()
-    rows = db.table("courses").select("*").order("id").execute().data
+    # Newest courses first
+    rows = db.table("courses").select("*").order("id", desc=True).execute().data
     if q:
         ql = q.lower()
         rows = [c for c in rows if ql in (c.get("title") or "").lower() or ql in (c.get("description") or "").lower()]
@@ -243,13 +244,16 @@ def reject_payment(p, message=None):
     return "rejected"
 
 def check_payment(order):
-    """Query ClickPesa API for status (polling fallback)."""
+    """Query ClickPesa API for status (polling fallback). Auto-activates on success."""
     p = db.table("payments").select("*").eq("order_reference", order).limit(1).execute().data
     if not p:
         return None
     p = p[0]
     if p["status"] != "pending":
         return p["status"]
+    # Manual payments are approved by admin only
+    if (p.get("method") or "").lower() == "manual":
+        return "pending"
     try:
         d = requests.get(f"{CP}/payments/{order}", headers=cp_headers(), timeout=15).json()
         d = d[0] if isinstance(d, list) and d else d
@@ -563,9 +567,9 @@ def admin(u):
         qs = db.table("questions").select("id,body,created_at,active,users(name)").order("id", desc=True).limit(20).execute().data
     except Exception:
         qs = []
-    courses = db.table("courses").select("id,title,description").order("id").execute().data
-    lessons = db.table("lessons").select("id,course_id,title,position,is_free").order("course_id").order("position").execute().data
-    adhkar = db.table("adhkar").select("*").order("type").order("id").limit(50).execute().data
+    courses = db.table("courses").select("id,title,description").order("id", desc=True).execute().data
+    lessons = db.table("lessons").select("id,course_id,title,position,is_free").order("id", desc=True).execute().data
+    adhkar = db.table("adhkar").select("*").order("id", desc=True).limit(50).execute().data
     return render_template(
         "admin.html",
         pays=pays,
@@ -648,7 +652,8 @@ def admin_course(u, cid):
     c = db.table("courses").select("*").eq("id", cid).limit(1).execute().data
     if not c:
         abort(404)
-    ls = db.table("lessons").select("*").eq("course_id", cid).order("position").execute().data
+    # Newest lessons first in admin view; position still used for learner order
+    ls = db.table("lessons").select("*").eq("course_id", cid).order("id", desc=True).execute().data
     return render_template("admin_course.html", c=c[0], ls=ls)
 
 @app.route("/admin/lesson/<int:lid>/edit", methods=["GET", "POST"])

@@ -1,6 +1,19 @@
 {% extends "base.html" %}{% block t %}Uanachama{% endblock %}{% block c %}
-<h2>Uanachama</h2>
-<p class="muted">TSh {{ PRICE }} kwa mwezi — fungua kozi zote na faida za ziada.</p>
+<style>
+.pay-hero{border-radius:18px;padding:18px 16px;color:#fff;margin-bottom:16px;
+  background:radial-gradient(120% 140% at 100% 0%,color-mix(in srgb,var(--gold) 38%,transparent),transparent 55%),linear-gradient(135deg,#0d5c43,#0a3d2e 70%);
+  box-shadow:0 10px 24px -12px rgba(10,61,46,.7)}
+.pay-hero h2{margin:0 0 6px;font-size:1.35rem}
+.pay-hero p{margin:0;opacity:.88;font-size:13.5px;line-height:1.5}
+.auto-tag{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:11.5px;font-weight:600;padding:5px 12px;border-radius:99px;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22)}
+</style>
+
+<div class="pay-hero">
+  <h2>Uanachama</h2>
+  <p>TSh {{ PRICE }} kwa mwezi — fungua kozi zote, masomo ya kina na faida za ziada.</p>
+  <span class="auto-tag">{{ icon('check',14) }} ClickPesa inajiendesha moja kwa moja</span>
+</div>
 
 <div class="feat" style="margin-bottom:18px">
   <div class="card">
@@ -23,7 +36,7 @@
     {{ icon('refresh',22).__str__()|replace('class="ic"','class="ic spin"')|safe }}
     <b>Subiri ombi kwenye simu yako</b>
   </p>
-  <p>Utapokea ujumbe wa kuweka PIN ya mobile money. Weka PIN kukamilisha malipo. Ukurasa huu utajisasisha wenyewe.</p>
+  <p>Weka PIN ya mobile money kukamilisha. Ukiisha lipa, <b>uanachama utawekwa moja kwa moja</b> — hakuna kusubiri admin.</p>
 </div>
 <script>
 let t=0;
@@ -34,18 +47,19 @@ const iv=setInterval(async()=>{
     if(r.status==='approved'){ clearInterval(iv); location.href='/dashboard' }
     else if(r.status==='rejected'){ clearInterval(iv); document.getElementById('wait').innerHTML='<b>Malipo hayakukamilika.</b> <a href="/pay">Jaribu tena</a>' }
   }catch(e){}
-  if(t>45){ clearInterval(iv); document.getElementById('wait').innerHTML='Bado tunasubiri uthibitisho. Fungua upya ukurasa huu baada ya dakika chache.' }
-},4000);
+  if(t>60){ clearInterval(iv); document.getElementById('wait').innerHTML='Bado tunasubiri uthibitisho. Fungua upya ukurasa huu baada ya sekunde chache — mfumo unajiendesha peke yake.' }
+},3000);
 </script>
 {% else %}
 
 <div class="card">
-  <h3 style="margin-top:0">Lipa moja kwa moja (USSD Push)</h3>
+  <h3 style="margin-top:0">Lipa moja kwa moja (ClickPesa)</h3>
+  <p class="muted" style="margin-top:0">Baada ya kuweka PIN, uanachama unawekwa <b>kiotomatiki</b> bila admin.</p>
   <form method="post">
     <input type="hidden" name="method" value="clickpesa">
     <label>Namba ya simu ya kulipia</label>
     <input name="phone" type="tel" inputmode="numeric" placeholder="0712345678" required>
-    <p class="muted">Tutatuma ombi la malipo kwenye simu yako (M-Pesa, Tigo Pesa, Airtel Money au HaloPesa).</p>
+    <p class="muted">M-Pesa, Tigo Pesa, Airtel Money au HaloPesa.</p>
     <button>{{ icon('card',18) }} Lipa TSh {{ PRICE }}</button>
   </form>
 </div>
@@ -64,7 +78,7 @@ const iv=setInterval(async()=>{
     <input name="phone" type="tel" inputmode="numeric" placeholder="0712345678">
     <button style="margin-top:10px">Wasilisha uthibitisho</button>
   </form>
-  <p class="muted" style="margin-top:10px;font-size:13px">Admin atathibitisha na kuweka uanachama wako.</p>
+  <p class="muted" style="margin-top:10px;font-size:13px">Malipo ya mkono yanahitaji uthibitisho wa admin.</p>
 </div>
 {% endif %}
 

@@ -1,19 +1,103 @@
-{% extends "base.html" %}{% block t %}Wasifu{% endblock %}{% block c %}<h2>Wasifu wangu</h2>
-<form method="post" class="card"><label>Jina</label><input name="name" value="{{ u.name }}" required>
-<label>Barua pepe</label><input value="{{ u.email }}" disabled>
-<label>Mji</label><input name="city" value="{{ u.city }}">
-<label>Namba ya WhatsApp (hiari)</label><input name="phone" type="tel" inputmode="numeric" value="{{ u.phone or '' }}" placeholder="0712345678">
-<label>Kuhusu mimi</label><textarea name="bio" rows="2" maxlength="200">{{ u.bio or '' }}</textarea>
-<h3 style="margin:6px 0">{{ icon('bell',20) }} Ukumbusho wa kila siku</h3>
-<label class="chk"><input type="checkbox" name="notify_email" {{ 'checked' if u.notify_email }}> Nitumie adhkar kwa email</label>
-<label class="chk"><input type="checkbox" name="notify_whatsapp" {{ 'checked' if u.notify_whatsapp }}> Nitumie adhkar kwa WhatsApp</label>
-<button>Hifadhi</button></form>
-<h3>{{ icon('lock',20) }} Badili nenosiri</h3><form method="post" action="/profile/password" class="card">
-<label>Nenosiri la sasa</label><input type="password" name="old" autocomplete="current-password" required>
-<label>Nenosiri jipya</label><input type="password" name="new" minlength="6" autocomplete="new-password" required><button>Badili nenosiri</button></form>
-<h3>{{ icon('shield',20) }} Faragha</h3><div class="card"><a href="/privacy">Sera ya Faragha</a> &nbsp;|&nbsp; <a href="/terms">Masharti ya Matumizi</a></div>
-<p><a class="btn ghost" href="/logout">{{ icon('logout',18) }} Toka</a></p>
-<h3>Futa akaunti</h3><form method="post" action="/profile/delete" class="card" onsubmit="return confirm('Hatua hii haiwezi kurudishwa. Endelea?')">
-<p class="muted">Akaunti yako, jumbe zako za jamii na historia ya malipo vitafutwa kabisa.</p>
-<label>Andika FUTA</label><input name="confirm" required><label>Nenosiri</label><input type="password" name="password" required>
-<button class="danger">{{ icon('trash',18) }} Futa akaunti yangu</button></form>{% endblock %}
+{% extends "base.html" %}{% block t %}Wasifu{% endblock %}{% block c %}
+<style>
+.pf{display:flex;flex-direction:column;gap:14px;padding-bottom:8px}
+.pf .hero{position:relative;overflow:hidden;border-radius:18px;padding:18px 16px;color:#fff;
+  background:radial-gradient(120% 140% at 100% 0%,color-mix(in srgb,var(--gold) 38%,transparent),transparent 55%),linear-gradient(135deg,#0d5c43,#0a3d2e 70%);
+  box-shadow:0 10px 24px -12px rgba(10,61,46,.7)}
+.pf .hero h2{margin:0 0 4px;font-size:1.35rem}
+.pf .hero p{margin:0;opacity:.85;font-size:13px}
+.pf .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:99px;margin-top:10px;
+  background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22)}
+.pf .badge.gold{background:color-mix(in srgb,var(--gold) 22%,transparent);border-color:color-mix(in srgb,var(--gold) 55%,transparent);color:#f6e3b0}
+.pf .sec{margin:4px 0 0}
+.pf .sec h3{margin:0 0 10px;font-size:1rem;display:flex;align-items:center;gap:8px}
+.pf .sec h3::before{content:"";width:3px;height:14px;border-radius:3px;background:linear-gradient(var(--g),var(--gold))}
+.pf label{display:block;font-size:12.5px;font-weight:600;margin:10px 0 4px;color:var(--ink-2)}
+.pf input,.pf textarea{width:100%;padding:11px 13px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+.pf input:focus,.pf textarea:focus{outline:none;border-color:var(--g)}
+.pf input:disabled{opacity:.65}
+.pf .chk{display:flex;align-items:center;gap:8px;margin:8px 0;font-size:13.5px}
+.pf .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.pf .btn-save{background:var(--g);color:#fff;border:none;border-radius:12px;padding:11px 18px;font-weight:700;cursor:pointer}
+.pf .btn-out{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:12px;border:1px solid var(--line);background:var(--soft);color:var(--ink);text-decoration:none;font-weight:600}
+.pf .btn-danger{background:color-mix(in srgb,var(--danger) 12%,transparent);color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 30%,var(--line));border-radius:12px;padding:11px 18px;font-weight:700;cursor:pointer;width:100%}
+.pf .links a{color:var(--g);font-weight:600;text-decoration:none}
+.pf .muted{color:var(--mut);font-size:13px;line-height:1.5}
+</style>
+
+<div class="pf">
+  <div class="hero">
+    <h2>{{ u.name }}</h2>
+    <p>{{ u.email }}</p>
+    {% if u.premium %}
+    <span class="badge gold">{{ icon('check',13) }} Mwanachama · hadi {{ u.until.strftime("%d/%m/%Y") }}</span>
+    {% else %}
+    <span class="badge">Akaunti ya bure · <a href="/pay" style="color:#f6e3b0;margin-left:4px">Jiunge</a></span>
+    {% endif %}
+  </div>
+
+  <div class="sec">
+    <h3>{{ icon('user',18) }} Taarifa</h3>
+    <form method="post" class="card">
+      <label>Jina</label>
+      <input name="name" value="{{ u.name }}" required>
+      <label>Barua pepe</label>
+      <input value="{{ u.email }}" disabled>
+      <label>Mji</label>
+      <input name="city" value="{{ u.city }}">
+      <label>Namba ya WhatsApp</label>
+      <input name="phone" type="tel" inputmode="numeric" value="{{ u.phone or '' }}" placeholder="0712345678">
+      <label>Kuhusu mimi</label>
+      <textarea name="bio" rows="2" maxlength="200">{{ u.bio or '' }}</textarea>
+
+      <h3 style="margin:16px 0 6px">{{ icon('bell',18) }} Ukumbusho</h3>
+      <label class="chk"><input type="checkbox" name="notify_email" {{ 'checked' if u.notify_email }}> Adhkar kwa email</label>
+      <label class="chk"><input type="checkbox" name="notify_whatsapp" {{ 'checked' if u.notify_whatsapp }}> Adhkar kwa WhatsApp</label>
+
+      <div class="actions">
+        <button type="submit" class="btn-save">Hifadhi mabadiliko</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="sec">
+    <h3>{{ icon('lock',18) }} Nenosiri</h3>
+    <form method="post" action="/profile/password" class="card">
+      <label>Nenosiri la sasa</label>
+      <input type="password" name="old" autocomplete="current-password" required>
+      <label>Nenosiri jipya</label>
+      <input type="password" name="new" minlength="6" autocomplete="new-password" required>
+      <div class="actions">
+        <button type="submit" class="btn-save">Badili nenosiri</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="sec">
+    <h3>{{ icon('shield',18) }} Faragha</h3>
+    <div class="card links">
+      <a href="/privacy">Sera ya Faragha</a>
+      <span class="muted"> · </span>
+      <a href="/terms">Masharti ya Matumizi</a>
+    </div>
+  </div>
+
+  <div class="actions">
+    <a class="btn-out" href="/logout">{{ icon('logout',16) }} Toka</a>
+  </div>
+
+  <div class="sec">
+    <h3>{{ icon('trash',18) }} Futa akaunti</h3>
+    <form method="post" action="/profile/delete" class="card" onsubmit="return confirm('Hatua hii haiwezi kurudishwa. Endelea?')">
+      <p class="muted">Akaunti yako, jumbe za jamii na historia ya malipo vitafutwa kabisa.</p>
+      <label>Andika FUTA</label>
+      <input name="confirm" required placeholder="FUTA">
+      <label>Nenosiri</label>
+      <input type="password" name="password" required>
+      <div class="actions">
+        <button type="submit" class="btn-danger">{{ icon('trash',16) }} Futa akaunti yangu</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
