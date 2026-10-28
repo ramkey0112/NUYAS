@@ -3,8 +3,11 @@
 .ql-toolbar.ql-snow{border-radius:12px 12px 0 0;border-color:var(--line)!important;background:var(--soft)}
 .ql-container.ql-snow{border-radius:0 0 12px 12px;border-color:var(--line)!important;min-height:220px;font-family:var(--font);font-size:15px}
 .ql-editor{min-height:200px}
+.btn-sm{min-height:36px;padding:8px 14px;font-size:13px;border-radius:10px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;border:none;cursor:pointer;font-weight:600}
+.btn-ok{background:var(--g);color:#fff}
+.btn-mute{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
 </style>
-<a href="/admin#masomo" class="muted" style="display:inline-flex;align-items:center;gap:4px;margin-bottom:12px;text-decoration:none">{{ icon('reply',16) }} Rudi Admin</a>
+<a href="/admin/course/{{ lesson.course_id }}" class="muted" style="display:inline-flex;align-items:center;gap:4px;margin-bottom:12px;text-decoration:none">{{ icon('reply',16) }} Rudi kwenye kozi</a>
 <h2>Hariri somo</h2>
 <form method="post" class="card" id="editForm">
   <select name="course_id" required>
@@ -19,9 +22,9 @@
   <input name="audio_url" value="{{ lesson.audio_url or '' }}" placeholder="Kiungo cha sauti" style="margin-top:8px">
   <input name="position" type="number" value="{{ lesson.position or 1 }}" style="margin-top:8px">
   <label class="chk"><input type="checkbox" name="is_free" {% if lesson.is_free %}checked{% endif %}> Somo la bure</label>
-  <div style="display:flex;gap:10px;margin-top:14px">
-    <button type="submit">Hifadhi mabadiliko</button>
-    <a href="/admin#masomo" class="btn ghost" style="text-decoration:none">Ghairi</a>
+  <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+    <button type="submit" class="btn-sm btn-ok">{{ icon('check',15) }} Hifadhi</button>
+    <a href="/admin/course/{{ lesson.course_id }}" class="btn-sm btn-mute">Ghairi</a>
   </div>
 </form>
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
@@ -32,12 +35,12 @@ const quill = new Quill('#editor', {
   modules: { toolbar: [
     ['bold','italic','underline'],
     [{header:[1,2,3,false]}],
+    [{align:[]}],
     [{list:'ordered'},{list:'bullet'}],
     ['link'],
     ['clean']
   ]}
 });
-// Load existing HTML content
 quill.root.innerHTML = {{ (lesson.body or '')|tojson }};
 document.getElementById('editForm').addEventListener('submit', function(){
   document.getElementById('bodyInput').value = quill.root.innerHTML;

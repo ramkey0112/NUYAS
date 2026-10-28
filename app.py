@@ -173,7 +173,12 @@ def dashboard(u):
 @app.route("/courses")
 @login_required
 def courses(u):
-    return render_template("courses.html", cs=db.table("courses").select("*").order("id").execute().data)
+    q = (request.args.get("q") or "").strip()
+    rows = db.table("courses").select("*").order("id").execute().data
+    if q:
+        ql = q.lower()
+        rows = [c for c in rows if ql in (c.get("title") or "").lower() or ql in (c.get("description") or "").lower()]
+    return render_template("courses.html", cs=rows, q=q)
 
 @app.route("/course/<int:cid>")
 @login_required
@@ -615,13 +620,16 @@ def admin_add(u, kind):
             "source": f.get("source"),
         }).execute()
         flash("Adhkar imeongezwa.")
+        return redirect(url_for("admin") + "#adhkar")
     elif kind == "course":
         db.table("courses").insert({"title": f["title"], "description": f.get("description")}).execute()
         flash("Kozi imeongezwa.")
+        return redirect(url_for("admin") + "#masomo")
     elif kind == "lesson":
         body = f.get("body") or ""
+        cid = int(f["course_id"])
         db.table("lessons").insert({
-            "course_id": int(f["course_id"]),
+            "course_id": cid,
             "title": f["title"],
             "body": body,
             "audio_url": f.get("audio_url") or None,
@@ -629,9 +637,19 @@ def admin_add(u, kind):
             "is_free": f.get("is_free") == "on",
         }).execute()
         flash("Somo limeongezwa.")
+        return redirect(url_for("admin_course", cid=cid))
     else:
         abort(400)
     return redirect(url_for("admin") + "#masomo")
+
+@app.route("/admin/course/<int:cid>")
+@admin_required
+def admin_course(u, cid):
+    c = db.table("courses").select("*").eq("id", cid).limit(1).execute().data
+    if not c:
+        abort(404)
+    ls = db.table("lessons").select("*").eq("course_id", cid).order("position").execute().data
+    return render_template("admin_course.html", c=c[0], ls=ls)
 
 @app.route("/admin/lesson/<int:lid>/edit", methods=["GET", "POST"])
 @admin_required
@@ -651,15 +669,19 @@ def admin_edit_lesson(u, lid):
             "course_id": int(f["course_id"]),
         }).eq("id", lid).execute()
         flash("Somo limesasishwa.")
-        return redirect(url_for("admin") + "#masomo")
+        return redirect(url_for("admin_course", cid=int(f["course_id"])))
     cs = db.table("courses").select("id,title").order("id").execute().data
     return render_template("admin_edit_lesson.html", lesson=lesson, cs=cs)
 
 @app.route("/admin/lesson/<int:lid>/delete", methods=["POST"])
 @admin_required
 def admin_delete_lesson(u, lid):
+    r = db.table("lessons").select("course_id").eq("id", lid).limit(1).execute().data
+    cid = r[0]["course_id"] if r else None
     db.table("lessons").delete().eq("id", lid).execute()
     flash("Somo limefutwa.")
+    if cid:
+        return redirect(url_for("admin_course", cid=cid))
     return redirect(url_for("admin") + "#masomo")
 
 @app.route("/admin/course/<int:cid>/delete", methods=["POST"])
@@ -741,8 +763,12 @@ def surah(u, n):
 @app.route("/maswali")
 @login_required
 def maswali(u):
-    qs = db.table("questions").select("*, users(name)").eq("active", True).order("id", desc=True).limit(40).execute().data
-    return render_template("maswali.html", qs=qs)
+    q = (request.args.get("q") or "").strip()
+    qs = db.table("questions").select("*, users(name)").eq("active", True).order("id", desc=True).limit(80).execute().data
+    if q:
+        ql = q.lower()
+        qs = [x for x in qs if ql in (x.get("body") or "").lower() or ql in ((x.get("users") or {}).get("name") or "").lower()]
+    return render_template("maswali.html", qs=qs, q=q)
 
 @app.route("/maswali/uliza", methods=["POST"])
 @login_required

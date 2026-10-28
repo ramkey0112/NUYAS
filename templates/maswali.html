@@ -1,10 +1,18 @@
 {% extends "base.html" %}{% block t %}Maswali{% endblock %}{% block c %}
+<style>
+.search-box{margin-bottom:14px}
+.search-box input{width:100%;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit}
+</style>
 <h2>Maswali na Majibu</h2>
 <p class="muted">Uliza swali au jibu maswali ya wengine. Kujifunza pamoja.</p>
 
-<form method="post" action="/maswali/uliza" class="card" style="margin-bottom:18px">
+<form method="post" action="/maswali/uliza" class="card" style="margin-bottom:14px">
   <textarea name="body" rows="3" placeholder="Andika swali lako hapa..." required maxlength="1000"></textarea>
   <button style="margin-top:10px">{{ icon('send',16) }} Tuma swali</button>
+</form>
+
+<form class="search-box" method="get" action="/maswali">
+  <input type="search" name="q" value="{{ q or '' }}" placeholder="Tafuta maswali..." autocomplete="off">
 </form>
 
 {% for q in qs %}
@@ -19,6 +27,6 @@
   </div>
 </a>
 {% else %}
-<div class="card"><p class="muted">Hakuna maswali bado. Kuwa wa kwanza kuuliza!</p></div>
+<div class="card"><p class="muted">{% if q %}Hakuna matokeo ya "{{ q }}".{% else %}Hakuna maswali bado. Kuwa wa kwanza kuuliza!{% endif %}</p></div>
 {% endfor %}
 {% endblock %}

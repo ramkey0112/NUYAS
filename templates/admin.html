@@ -6,16 +6,25 @@
 .adm-sec{display:none;animation:fadeIn .25s ease}
 .adm-sec.on{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-.adm-actions{display:flex;gap:6px;flex-wrap:wrap}
+.btn-sm{min-height:34px;padding:6px 12px;font-size:12.5px;border-radius:10px;display:inline-flex;align-items:center;gap:5px;text-decoration:none;border:none;cursor:pointer;font-weight:600}
+.btn-ok{background:var(--g);color:#fff}
+.btn-edit{background:color-mix(in srgb,var(--g) 16%,transparent);color:var(--g);border:1px solid color-mix(in srgb,var(--g) 35%,var(--line))}
+.btn-del{background:color-mix(in srgb,var(--danger) 10%,transparent);color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 30%,var(--line))}
+.btn-mute{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
+.btn-warn{background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn);border:1px solid color-mix(in srgb,var(--warn) 35%,var(--line))}
+.adm-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .adm-actions form{margin:0}
-.adm-actions button{min-height:32px;padding:4px 12px;font-size:12px}
-.ql-toolbar.ql-snow{border-radius:12px 12px 0 0;border-color:var(--line)!important;background:var(--soft)}
-.ql-container.ql-snow{border-radius:0 0 12px 12px;border-color:var(--line)!important;min-height:160px;font-family:var(--font);font-size:15px}
-.ql-editor{min-height:150px}
+.search-box{display:flex;gap:8px;margin:0 0 14px}
+.search-box input{flex:1;margin:0}
 .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center}
 .stat b{display:block;font-size:22px;color:var(--g)}
 .stat span{font-size:12px;color:var(--mut)}
+.course-card{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;text-decoration:none;color:inherit}
+.course-card:hover{border-color:var(--g)}
+.ql-toolbar.ql-snow{border-radius:12px 12px 0 0;border-color:var(--line)!important;background:var(--soft)}
+.ql-container.ql-snow{border-radius:0 0 12px 12px;border-color:var(--line)!important;min-height:160px;font-family:var(--font);font-size:15px}
+.ql-editor{min-height:150px}
 </style>
 
 <div class="adm-nav" id="admNav">
@@ -31,19 +40,22 @@
   <div class="stat-row">
     <div class="stat"><b>{{ pays|selectattr('status','equalto','pending')|list|length }}</b><span>Inasubiri</span></div>
     <div class="stat"><b>{{ pays|selectattr('status','equalto','approved')|list|length }}</b><span>Imekamilika</span></div>
-    <div class="stat"><b>{{ pays|length }}</b><span>Jumla (30)</span></div>
+    <div class="stat"><b>{{ pays|length }}</b><span>Jumla</span></div>
   </div>
 
   <h2>Toa uanachama</h2>
   <form method="post" action="/admin/grant" class="card">
     <input type="email" name="email" placeholder="Barua pepe ya mtumiaji" required>
     <input type="number" name="days" value="30" min="1" style="margin-top:8px" placeholder="Siku">
-    <button style="margin-top:10px">Toa uanachama</button>
+    <button type="submit" class="btn-sm btn-ok" style="margin-top:10px">Toa uanachama</button>
   </form>
 
-  <h2>Malipo ya hivi karibuni</h2>
+  <h2>Malipo</h2>
+  <div class="search-box">
+    <input type="search" id="paySearch" placeholder="Tafuta jina, email, ref, simu..." autocomplete="off">
+  </div>
   {% for p in pays %}
-  <div class="card">
+  <div class="card pay-item" data-q="{{ ((p.users.name if p.users else '') ~ ' ' ~ (p.users.email if p.users else '') ~ ' ' ~ (p.reference or '') ~ ' ' ~ (p.phone or '') ~ ' ' ~ p.status)|lower }}">
     <div class="row">
       <span>
         <b>{{ p.users.name if p.users else '?' }}</b>
@@ -57,10 +69,10 @@
     {% if p.status == 'pending' %}
     <div class="adm-actions" style="margin-top:10px">
       <form method="post" action="/admin/payment/{{ p.id }}/approve">
-        <button type="submit" style="background:var(--g)">Thibitisha</button>
+        <button type="submit" class="btn-sm btn-ok">{{ icon('check',14) }} Thibitisha</button>
       </form>
       <form method="post" action="/admin/payment/{{ p.id }}/reject">
-        <button type="submit" class="ghost" style="color:var(--danger)">Kataa</button>
+        <button type="submit" class="btn-sm btn-del">{{ icon('x',14) }} Kataa</button>
       </form>
     </div>
     {% endif %}
@@ -76,56 +88,35 @@
   <form method="post" action="/admin/add/course" class="card">
     <input name="title" placeholder="Jina la kozi" required>
     <textarea name="description" placeholder="Maelezo mafupi" style="margin-top:8px"></textarea>
-    <button style="margin-top:10px">Ongeza kozi</button>
-  </form>
-
-  <h2>Ongeza somo</h2>
-  <form method="post" action="/admin/add/lesson" class="card" id="lessonForm">
-    <select name="course_id" required>
-      {% for c in cs %}<option value="{{ c.id }}">{{ c.title }}</option>{% endfor %}
-    </select>
-    <input name="title" placeholder="Kichwa cha somo" required style="margin-top:8px">
-    <label style="margin-top:10px;display:block;font-weight:600">Maudhui</label>
-    <div id="editor"></div>
-    <input type="hidden" name="body" id="bodyInput">
-    <input name="audio_url" placeholder="Kiungo cha sauti (hiari)" style="margin-top:8px">
-    <input name="position" type="number" value="1" style="margin-top:8px" placeholder="Nafasi">
-    <label class="chk"><input type="checkbox" name="is_free"> Somo la bure</label>
-    <button type="submit" style="margin-top:10px">Ongeza somo</button>
+    <button type="submit" class="btn-sm btn-ok" style="margin-top:10px">{{ icon('plus',14) }} Ongeza kozi</button>
   </form>
 
   <h2>Kozi zilizopo</h2>
-  {% for c in cs %}
-  <div class="card row">
-    <span><b>{{ c.title }}</b><br><span class="muted">{{ c.description or '' }}</span></span>
-    <form method="post" action="/admin/course/{{ c.id }}/delete" onsubmit="return confirm('Futa kozi hii na masomo yake yote?')">
-      <button type="submit" class="ghost" style="color:var(--danger);min-height:36px">{{ icon('trash',16) }}</button>
-    </form>
+  <p class="muted" style="margin-top:-6px">Bonyeza kozi kuona na kuhariri masomo yake yote.</p>
+  <div class="search-box">
+    <input type="search" id="courseSearch" placeholder="Tafuta kozi..." autocomplete="off">
   </div>
+  {% for c in cs %}
+  <a href="/admin/course/{{ c.id }}" class="card course-card course-item" data-q="{{ (c.title ~ ' ' ~ (c.description or ''))|lower }}">
+    <span>
+      <b>{{ c.title }}</b>
+      <br><span class="muted">{{ c.description or '—' }}</span>
+      <br><span class="muted" style="font-size:12px">{{ lessons|selectattr('course_id','equalto',c.id)|list|length }} somo</span>
+    </span>
+    <span class="btn-sm btn-edit">Fungua ›</span>
+  </a>
   {% else %}
   <p class="muted">Hakuna kozi bado.</p>
   {% endfor %}
 
-  <h2>Masomo yote</h2>
-  {% for l in lessons %}
-  <div class="card">
-    <div class="row">
-      <span>
-        <b>{{ l.title }}</b>
-        <span class="tag" style="margin-left:6px">#{{ l.position }}</span>
-        {% if l.is_free %}<span class="tag">Bure</span>{% endif %}
-        <br><span class="muted">Kozi ID: {{ l.course_id }}</span>
-      </span>
-      <div class="adm-actions">
-        <a href="/admin/lesson/{{ l.id }}/edit" class="btn" style="min-height:36px;padding:6px 12px;text-decoration:none">{{ icon('edit',16) }} Hariri</a>
-        <form method="post" action="/admin/lesson/{{ l.id }}/delete" onsubmit="return confirm('Futa somo hili?')">
-          <button type="submit" class="ghost" style="color:var(--danger);min-height:36px">{{ icon('trash',16) }}</button>
-        </form>
-      </div>
-    </div>
+  <h2 style="margin-top:22px">Futa kozi</h2>
+  {% for c in cs %}
+  <div class="card row course-del-item" data-q="{{ c.title|lower }}">
+    <span><b>{{ c.title }}</b></span>
+    <form method="post" action="/admin/course/{{ c.id }}/delete" onsubmit="return confirm('Futa kozi hii na masomo yake yote?')">
+      <button type="submit" class="btn-sm btn-del">{{ icon('trash',14) }} Futa</button>
+    </form>
   </div>
-  {% else %}
-  <p class="muted">Hakuna masomo bado.</p>
   {% endfor %}
 </section>
 
@@ -137,19 +128,22 @@
     <input name="arabic" placeholder="Kiarabu" required style="margin-top:8px" dir="rtl">
     <textarea name="swahili" placeholder="Tafsiri ya Kiswahili" required style="margin-top:8px"></textarea>
     <input name="source" placeholder="Rejea (mf. Hisnul Muslim)" style="margin-top:8px">
-    <button style="margin-top:10px">Ongeza adhkar</button>
+    <button type="submit" class="btn-sm btn-ok" style="margin-top:10px">{{ icon('plus',14) }} Ongeza</button>
   </form>
 
   <h2>Adhkar zilizopo</h2>
+  <div class="search-box">
+    <input type="search" id="adhkarSearch" placeholder="Tafuta adhkar..." autocomplete="off">
+  </div>
   {% for a in adhkar %}
-  <div class="card row">
+  <div class="card row adhkar-item" data-q="{{ (a.arabic ~ ' ' ~ a.swahili ~ ' ' ~ (a.source or '') ~ ' ' ~ a.type)|lower }}">
     <span>
       <span class="tag">{{ a.type }}</span>
       <div style="font-size:18px;direction:rtl;margin:6px 0">{{ a.arabic }}</div>
-      <span class="muted">{{ a.swahili[:80] }}{% if a.swahili|length > 80 %}…{% endif %}</span>
+      <span class="muted">{{ a.swahili[:100] }}{% if a.swahili|length > 100 %}…{% endif %}</span>
     </span>
     <form method="post" action="/admin/adhkar/{{ a.id }}/delete" onsubmit="return confirm('Futa?')">
-      <button type="submit" class="ghost" style="color:var(--danger);min-height:36px">{{ icon('trash',16) }}</button>
+      <button type="submit" class="btn-sm btn-del">{{ icon('trash',14) }}</button>
     </form>
   </div>
   {% else %}
@@ -162,24 +156,27 @@
   <h2>Chapisha swali</h2>
   <form method="post" action="/admin/swali" class="card">
     <textarea name="body" rows="3" placeholder="Andika swali..." required maxlength="1000"></textarea>
-    <button style="margin-top:10px">Chapisha</button>
+    <button type="submit" class="btn-sm btn-ok" style="margin-top:10px">{{ icon('send',14) }} Chapisha</button>
   </form>
 
-  <h2>Maswali yaliyopo</h2>
+  <h2>Maswali</h2>
+  <div class="search-box">
+    <input type="search" id="qSearch" placeholder="Tafuta swali..." autocomplete="off">
+  </div>
   {% for q in qs %}
-  <div class="card">
+  <div class="card q-item" data-q="{{ (q.body ~ ' ' ~ ((q.users.name if q.users else '') or ''))|lower }}">
     <div class="row">
       <span>
         <span class="tag">{{ 'Hai' if q.active else 'Imefichwa' }}</span>
-        <p style="margin:8px 0 4px">{{ q.body[:200] }}{% if q.body|length > 200 %}…{% endif %}</p>
+        <p style="margin:8px 0 4px">{{ q.body[:220] }}{% if q.body|length > 220 %}…{% endif %}</p>
         <span class="muted" style="font-size:12px">{{ (q.users.name if q.users else 'Admin') }} · {{ (q.created_at or '')[:10] }}</span>
       </span>
       <div class="adm-actions">
         <form method="post" action="/admin/question/{{ q.id }}/toggle">
-          <button type="submit" class="ghost" style="min-height:36px">{{ 'Ficha' if q.active else 'Onyesha' }}</button>
+          <button type="submit" class="btn-sm btn-mute">{{ 'Ficha' if q.active else 'Onyesha' }}</button>
         </form>
         <form method="post" action="/admin/question/{{ q.id }}/delete" onsubmit="return confirm('Futa swali?')">
-          <button type="submit" class="ghost" style="color:var(--danger);min-height:36px">{{ icon('trash',16) }}</button>
+          <button type="submit" class="btn-sm btn-del">{{ icon('trash',14) }}</button>
         </form>
       </div>
     </div>
@@ -203,7 +200,7 @@
     <input name="link_url" placeholder="/pay au https://...">
     <label>Nafasi</label>
     <input type="number" name="position" value="1">
-    <button style="margin-top:10px">Ongeza banner</button>
+    <button type="submit" class="btn-sm btn-ok" style="margin-top:10px">{{ icon('plus',14) }} Ongeza banner</button>
   </form>
 
   {% for b in banners %}
@@ -214,18 +211,16 @@
     </span>
     <div class="adm-actions">
       <form method="post" action="/admin/banner/toggle/{{ b.id }}">
-        <button type="submit" class="ghost" style="min-height:36px">{{ 'Zima' if b.active else 'Washa' }}</button>
+        <button type="submit" class="btn-sm btn-mute">{{ 'Zima' if b.active else 'Washa' }}</button>
       </form>
       <form method="post" action="/admin/banner/{{ b.id }}/delete" onsubmit="return confirm('Futa banner?')">
-        <button type="submit" class="ghost" style="color:var(--danger);min-height:36px">{{ icon('trash',16) }}</button>
+        <button type="submit" class="btn-sm btn-del">{{ icon('trash',14) }}</button>
       </form>
     </div>
   </div>
   {% endfor %}
 </section>
 
-<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
 <script>
 (function(){
   const secs = document.querySelectorAll('.adm-sec');
@@ -239,24 +234,21 @@
   const hash = (location.hash || '#malipo').slice(1);
   show(['malipo','masomo','adhkar','maswali','banner'].includes(hash) ? hash : 'malipo');
 
-  // Quill editor for new lesson
-  const ed = document.getElementById('editor');
-  if(ed){
-    const quill = new Quill('#editor', {
-      theme: 'snow',
-      modules: { toolbar: [
-        ['bold','italic','underline'],
-        [{header:[1,2,3,false]}],
-        [{list:'ordered'},{list:'bullet'}],
-        ['link'],
-        ['clean']
-      ]},
-      placeholder: 'Andika maudhui ya somo…'
-    });
-    document.getElementById('lessonForm').addEventListener('submit', function(){
-      document.getElementById('bodyInput').value = quill.root.innerHTML;
+  function bindSearch(inputId, itemSel){
+    const inp = document.getElementById(inputId);
+    if(!inp) return;
+    inp.addEventListener('input', function(){
+      const q = this.value.trim().toLowerCase();
+      document.querySelectorAll(itemSel).forEach(el => {
+        const hay = el.dataset.q || el.textContent.toLowerCase();
+        el.style.display = !q || hay.includes(q) ? '' : 'none';
+      });
     });
   }
+  bindSearch('paySearch', '.pay-item');
+  bindSearch('courseSearch', '.course-item');
+  bindSearch('adhkarSearch', '.adhkar-item');
+  bindSearch('qSearch', '.q-item');
 })();
 </script>
 {% endblock %}

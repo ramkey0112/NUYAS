@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% block c %}
+{% extends "base.html" %}{% block t %}Kozi{% endblock %}{% block c %}
 <style>
 .dx{--gx:var(--g,#16a36a);--cx:var(--card,#fff);--lx:var(--line,rgba(128,128,128,.22));
   font-size:12.5px;line-height:1.55;display:flex;flex-direction:column;gap:10px;padding-bottom:8px}
@@ -20,6 +20,8 @@
 .dx .tx p{font-size:11px;opacity:.65;margin-top:2px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .dx .go{flex:none;font-size:17px;opacity:.35;line-height:1}
 .dx .empty{text-align:center;padding:26px 16px;border:1px dashed var(--lx);border-radius:16px;font-size:11.5px;opacity:.7}
+.dx .search{margin-bottom:4px}
+.dx .search input{width:100%;padding:10px 14px;border-radius:12px;border:1px solid var(--lx);background:var(--cx);color:var(--ink);font:inherit}
 </style>
 
 <div class="dx">
@@ -27,6 +29,10 @@
     <h2>Kozi</h2>
     {% if cs %}<span>{{ cs|length }} kozi</span>{% endif %}
   </div>
+
+  <form class="search" method="get" action="/courses">
+    <input type="search" name="q" value="{{ q or '' }}" placeholder="Tafuta kozi..." autocomplete="off">
+  </form>
 
   {% for c in cs %}
   <a class="cr" href="/course/{{ c.id }}">
@@ -38,7 +44,7 @@
     <span class="go">›</span>
   </a>
   {% else %}
-  <div class="empty">Kozi zinakuja hivi karibuni.</div>
+  <div class="empty">{% if q %}Hakuna kozi zinazolingana na "{{ q }}".{% else %}Kozi zinakuja hivi karibuni.{% endif %}</div>
   {% endfor %}
 </div>
 {% endblock %}

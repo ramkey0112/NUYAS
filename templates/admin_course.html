@@ -1,0 +1,107 @@
+{% extends "base.html" %}{% block t %}{{ c.title }} · Admin{% endblock %}{% block c %}
+<style>
+.btn-sm{min-height:34px;padding:6px 12px;font-size:12.5px;border-radius:10px;display:inline-flex;align-items:center;gap:5px;text-decoration:none;border:none;cursor:pointer;font-weight:600}
+.btn-edit{background:color-mix(in srgb,var(--g) 16%,transparent);color:var(--g);border:1px solid color-mix(in srgb,var(--g) 35%,var(--line))}
+.btn-del{background:color-mix(in srgb,var(--danger) 10%,transparent);color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 30%,var(--line))}
+.btn-add{background:var(--g);color:#fff}
+.btn-back{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
+.search-box{display:flex;gap:8px;margin-bottom:14px}
+.search-box input{flex:1;margin:0}
+.lesson-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lesson-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+  <a href="/admin#masomo" class="btn-sm btn-back">{{ icon('reply',15) }} Kozi zote</a>
+  <a href="/admin/lesson/new?course_id={{ c.id }}" class="btn-sm btn-add" id="addLessonBtn">{{ icon('plus',15) }} Ongeza somo</a>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <h2 style="margin:0 0 6px">{{ c.title }}</h2>
+  <p class="muted" style="margin:0">{{ c.description or 'Hakuna maelezo' }}</p>
+  <p class="muted" style="margin:8px 0 0;font-size:13px">{{ ls|length }} somo</p>
+</div>
+
+<div class="search-box">
+  <input type="search" id="lessonSearch" placeholder="Tafuta somo..." autocomplete="off">
+</div>
+
+{% for l in ls %}
+<div class="card lesson-item" data-title="{{ l.title|lower }}">
+  <div class="lesson-row">
+    <div>
+      <div class="lesson-meta">
+        <span class="tag">#{{ l.position }}</span>
+        {% if l.is_free %}<span class="tag">Bure</span>{% endif %}
+      </div>
+      <b style="display:block;margin-top:6px">{{ l.title }}</b>
+      {% if l.audio_url %}<span class="muted" style="font-size:12px">{{ icon('play',12) }} Sauti ipo</span>{% endif %}
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <a href="/lesson/{{ l.id }}" class="btn-sm btn-back" target="_blank">Angalia</a>
+      <a href="/admin/lesson/{{ l.id }}/edit" class="btn-sm btn-edit">{{ icon('edit',14) }} Hariri</a>
+      <form method="post" action="/admin/lesson/{{ l.id }}/delete" style="margin:0" onsubmit="return confirm('Futa somo hili?')">
+        <button type="submit" class="btn-sm btn-del">{{ icon('trash',14) }} Futa</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="card"><p class="muted" style="margin:0">Hakuna masomo bado kwenye kozi hii.</p></div>
+{% endfor %}
+
+{# Quick add lesson form #}
+<details class="card" style="margin-top:18px" id="addBox">
+  <summary style="cursor:pointer;font-weight:700">{{ icon('plus',16) }} Ongeza somo jipya</summary>
+  <form method="post" action="/admin/add/lesson" id="lessonForm" style="margin-top:14px">
+    <input type="hidden" name="course_id" value="{{ c.id }}">
+    <input name="title" placeholder="Kichwa cha somo" required>
+    <label style="margin-top:10px;display:block;font-weight:600">Maudhui</label>
+    <div id="editor"></div>
+    <input type="hidden" name="body" id="bodyInput">
+    <input name="audio_url" placeholder="Kiungo cha sauti (hiari)" style="margin-top:8px">
+    <input name="position" type="number" value="{{ (ls|length) + 1 }}" style="margin-top:8px" placeholder="Nafasi">
+    <label class="chk"><input type="checkbox" name="is_free"> Somo la bure</label>
+    <button type="submit" class="btn-sm btn-add" style="margin-top:12px">Hifadhi somo</button>
+  </form>
+</details>
+
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<style>
+.ql-toolbar.ql-snow{border-radius:12px 12px 0 0;border-color:var(--line)!important;background:var(--soft)}
+.ql-container.ql-snow{border-radius:0 0 12px 12px;border-color:var(--line)!important;min-height:160px;font-family:var(--font);font-size:15px}
+.ql-editor{min-height:150px}
+</style>
+<script>
+document.getElementById('lessonSearch')?.addEventListener('input', function(){
+  const q = this.value.trim().toLowerCase();
+  document.querySelectorAll('.lesson-item').forEach(el => {
+    el.style.display = !q || (el.dataset.title||'').includes(q) ? '' : 'none';
+  });
+});
+const ed = document.getElementById('editor');
+if(ed){
+  const quill = new Quill('#editor', {
+    theme: 'snow',
+    modules: { toolbar: [
+      ['bold','italic','underline'],
+      [{header:[1,2,3,false]}],
+      [{align:[]}],
+      [{list:'ordered'},{list:'bullet'}],
+      ['link'],
+      ['clean']
+    ]},
+    placeholder: 'Andika maudhui ya somo…'
+  });
+  document.getElementById('lessonForm').addEventListener('submit', function(){
+    document.getElementById('bodyInput').value = quill.root.innerHTML;
+  });
+}
+document.getElementById('addLessonBtn')?.addEventListener('click', function(e){
+  e.preventDefault();
+  const box = document.getElementById('addBox');
+  if(box){ box.open = true; box.scrollIntoView({behavior:'smooth',block:'start'}); }
+});
+</script>
+{% endblock %}
