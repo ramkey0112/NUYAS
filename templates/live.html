@@ -65,25 +65,25 @@
   transition:transform .15s}
 .dx .pw .bigplay:hover .c{transform:scale(1.06)}
 
-/* Channel cards */
+/* Channel cards — theme-safe text colors */
 .dx .sec{display:flex;align-items:center;margin:2px 2px -2px}
-.dx .sec h3{margin:0;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px}
+.dx .sec h3{margin:0;font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--ink)}
 .dx .sec h3::before{content:"";width:3px;height:14px;border-radius:3px;background:linear-gradient(var(--gx),var(--gold))}
 .dx .ch-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(min-width:560px){.dx .ch-grid{grid-template-columns:repeat(4,1fr)}}
 .dx .ch{display:flex;flex-direction:column;gap:7px;text-align:left;background:var(--cx);border:1.5px solid var(--lx);
   border-radius:14px;padding:12px 11px;cursor:pointer;transition:all .18s;position:relative;
-  box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 16px -10px rgba(0,0,0,.18);color:inherit;font:inherit}
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 16px -10px rgba(0,0,0,.18);color:var(--ink);font:inherit}
 .dx .ch:hover{border-color:color-mix(in srgb,var(--gx) 45%,var(--lx));transform:translateY(-1px)}
 .dx .ch:active{transform:scale(.98)}
 .dx .ch.on{border-color:var(--gx);background:color-mix(in srgb,var(--gx) 9%,var(--cx));
   box-shadow:0 0 0 1px var(--gx),0 8px 20px -10px color-mix(in srgb,var(--gx) 35%,transparent)}
 .dx .ch .ico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:15px;
-  background:color-mix(in srgb,var(--gx) 12%,transparent)}
+  background:color-mix(in srgb,var(--gx) 12%,transparent);color:var(--gx)}
 .dx .ch.on .ico{background:var(--gx);color:#fff}
-.dx .ch b{font-size:12px;font-weight:700;line-height:1.25;display:block}
-.dx .ch span{font-size:10px;opacity:.62;line-height:1.3;display:block;margin-top:1px}
-.dx .ch .dot{position:absolute;top:10px;right:10px;width:7px;height:7px;border-radius:50%;background:var(--mut-2);opacity:.4}
+.dx .ch b{font-size:12px;font-weight:700;line-height:1.25;display:block;color:var(--ink)}
+.dx .ch span{font-size:10.5px;color:var(--mut);line-height:1.35;display:block;margin-top:2px}
+.dx .ch .dot{position:absolute;top:10px;right:10px;width:7px;height:7px;border-radius:50%;background:var(--mut-2);opacity:.5}
 .dx .ch.on .dot{background:#dc2626;opacity:1;box-shadow:0 0 0 3px rgba(220,38,38,.22);animation:blink 1.2s infinite}
 </style>
 

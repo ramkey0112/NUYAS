@@ -31,10 +31,10 @@
   --g-dark: #047857;
   --g-deep: #064e3b;
   --g-light: #10b981;
-  --gold: #d4a017;
+  --gold: #b8860b;
   --gold-soft: #f5e6b8;
-  --mut: #5b7268;
-  --mut-2: #7a9188;
+  --mut: #3d524a;
+  --mut-2: #5b7268;
   --line: #d5e2db;
   --line-2: #c5d5cc;
   --me: #d1fae5;
@@ -91,7 +91,7 @@ html[data-theme="light"] {
   --ink: #0f1f1a; --ink-2: #1a2e28; --bg: #f0f5f2; --bg-2: #e6eeea;
   --card: #ffffff; --soft: #e8f0ec; --soft-2: #dce8e2;
   --g: #059669; --g-dark: #047857; --g-deep: #064e3b; --g-light: #10b981;
-  --gold: #d4a017; --gold-soft: #f5e6b8; --mut: #5b7268; --mut-2: #7a9188;
+  --gold: #b8860b; --gold-soft: #f5e6b8; --mut: #3d524a; --mut-2: #5b7268;
   --line: #d5e2db; --line-2: #c5d5cc; --me: #d1fae5;
   --sh: 0 1px 3px rgba(6,78,59,.04), 0 8px 24px -6px rgba(6,78,59,.1);
   --sh-lg: 0 4px 6px rgba(6,78,59,.03), 0 16px 40px -12px rgba(6,78,59,.14);
@@ -111,6 +111,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+.muted, .text-muted { color: var(--mut) !important; }
 a { color: var(--g); text-underline-offset: 3px; transition: color .15s var(--ease) }
 a:hover { color: var(--g-dark) }
 .ic { vertical-align: -3.5px; flex: none; stroke-width: 2 }
@@ -571,7 +572,7 @@ html[data-theme="dark"] .anum { color: var(--g) }
 <nav class="tabbar" aria-label="Menyu kuu">
   <a href="/dashboard" class="{{ 'on' if ep=='dashboard' }}">{{ icon('home') }}Nyumbani</a>
   <a href="/quran" class="{{ 'on' if ep in ('quran','surah') }}">{{ icon('book') }}Qurani</a>
-  <a href="/live" class="{{ 'on' if ep=='live' }}" style="color:inherit">📺 Live</a>
+  <a href="/live" class="{{ 'on' if ep=='live' }}">📺 Live</a>
   <a href="/courses" class="{{ 'on' if ep in ('courses','course','lesson') }}">{{ icon('book') }}Kozi</a>
   <a href="/profile" class="{{ 'on' if ep=='profile' }}">{{ icon('user') }}Wasifu</a>
 </nav>
