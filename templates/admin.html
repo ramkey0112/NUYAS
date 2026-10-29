@@ -237,6 +237,28 @@
     <input name="url" value="/dashboard" placeholder="/courses au /lesson/1">
     <button type="submit" class="btn-sm btn-ok" style="margin-top:12px">{{ icon('bell',14) }} Tuma kwa wote</button>
   </form>
+
+  <h2>Arifa zilizotumwa</h2>
+  {% for n in notifs %}
+  <div class="card">
+    <div class="row">
+      <span>
+        <span class="tag">{{ n.kind or 'broadcast' }}</span>
+        <b style="display:block;margin:6px 0 2px">{{ n.title }}</b>
+        <span class="muted" style="font-size:13px">{{ n.body[:140] }}{% if n.body|length > 140 %}…{% endif %}</span>
+        <br><span class="muted" style="font-size:12px">{{ (n.created_at or '')[:16].replace('T',' ') }}</span>
+      </span>
+      <div class="adm-actions">
+        <a href="/admin/notification/{{ n.id }}/edit" class="btn-sm btn-edit">{{ icon('edit',14) }} Hariri</a>
+        <form method="post" action="/admin/notification/{{ n.id }}/delete" onsubmit="return confirm('Futa arifa hii?')">
+          <button type="submit" class="btn-sm btn-del">{{ icon('trash',14) }}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <p class="muted">Hakuna arifa bado.</p>
+  {% endfor %}
 </section>
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>

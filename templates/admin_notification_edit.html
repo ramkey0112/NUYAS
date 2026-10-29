@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% block t %}Hariri Arifa{% endblock %}{% block c %}
+<style>
+.btn-sm{min-height:36px;padding:8px 14px;font-size:13px;border-radius:10px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;border:none;cursor:pointer;font-weight:600}
+.btn-ok{background:var(--g);color:#fff}
+.btn-mute{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
+</style>
+<a href="/admin#broadcast" class="muted" style="display:inline-flex;align-items:center;gap:4px;margin-bottom:12px;text-decoration:none">{{ icon('reply',16) }} Rudi</a>
+<h2>Hariri arifa</h2>
+<form method="post" class="card">
+  <label>Kichwa</label>
+  <input name="title" value="{{ n.title }}" required maxlength="120">
+  <label style="margin-top:10px">Ujumbe</label>
+  <textarea name="body" rows="5" required maxlength="500">{{ n.body }}</textarea>
+  <label style="margin-top:10px">Kiungo</label>
+  <input name="url" value="{{ n.url or '/' }}">
+  <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+    <button type="submit" class="btn-sm btn-ok">{{ icon('check',15) }} Hifadhi</button>
+    <a href="/admin#broadcast" class="btn-sm btn-mute">Ghairi</a>
+  </div>
+</form>
+{% endblock %}

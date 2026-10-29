@@ -1,0 +1,50 @@
+{% extends "base.html" %}{% block t %}Arifa{% endblock %}{% block c %}
+<style>
+.nf{display:flex;flex-direction:column;gap:12px;padding-bottom:12px}
+.nf .head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.nf .head h2{margin:0;font-size:1.35rem;font-weight:800;display:flex;align-items:center;gap:8px}
+.nf .head h2::before{content:"";width:3px;height:18px;border-radius:3px;background:linear-gradient(var(--g),var(--gold))}
+.nf .card-n{display:block;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 15px;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 22px -12px rgba(0,0,0,.18);transition:border-color .15s,transform .12s;position:relative}
+.nf .card-n:active{transform:scale(.99)}
+.nf .card-n.unread{border-color:color-mix(in srgb,var(--g) 45%,var(--line));background:color-mix(in srgb,var(--g) 6%,var(--card))}
+.nf .card-n.unread::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--g)}
+.nf .k{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;
+  background:color-mix(in srgb,var(--g) 12%,transparent);color:var(--g);margin-bottom:8px}
+.nf .k.lesson{background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold)}
+.nf .k.adhkar{background:color-mix(in srgb,#6366f1 14%,transparent);color:#818cf8}
+.nf .t{font-weight:750;font-size:15px;line-height:1.35;margin:0 0 6px}
+.nf .b{font-size:13.5px;line-height:1.55;color:var(--mut);margin:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.nf .meta{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px;color:var(--mut-2)}
+.nf .empty{text-align:center;padding:40px 16px;border:1px dashed var(--line);border-radius:18px;color:var(--mut)}
+.nf .empty svg{opacity:.4;margin-bottom:8px}
+</style>
+
+<div class="nf">
+  <div class="head">
+    <h2>{{ icon('bell',22) }} Arifa</h2>
+    <span class="tag">{{ items|length }}</span>
+  </div>
+
+  {% for n in items %}
+  <a class="card-n {% if not n.is_read %}unread{% endif %}" href="{{ n.url or '/dashboard' }}">
+    <span class="k {{ n.kind or '' }}">
+      {% if n.kind == 'lesson' %}Somo
+      {% elif n.kind == 'adhkar' %}Adhkar
+      {% else %}Arifa{% endif %}
+    </span>
+    <p class="t">{{ n.title }}</p>
+    <p class="b">{{ n.body }}</p>
+    <div class="meta">
+      <span>{{ (n.created_at or '')[:16].replace('T',' ') }}</span>
+      <span>›</span>
+    </div>
+  </a>
+  {% else %}
+  <div class="empty">
+    {{ icon('bell',36) }}
+    <p>Hakuna arifa bado.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -579,6 +579,10 @@ def admin(u):
     courses = db.table("courses").select("id,title,description").order("id", desc=True).execute().data
     lessons = db.table("lessons").select("id,course_id,title,position,is_free").order("id", desc=True).execute().data
     adhkar = db.table("adhkar").select("*").order("id", desc=True).limit(50).execute().data
+    try:
+        notifs = db.table("notifications").select("*").order("id", desc=True).limit(40).execute().data or []
+    except Exception:
+        notifs = []
     return render_template(
         "admin.html",
         pays=pays,
@@ -587,6 +591,7 @@ def admin(u):
         banners=banners,
         qs=qs,
         adhkar=adhkar,
+        notifs=notifs,
     )
 
 @app.route("/admin/grant", methods=["POST"])
@@ -999,7 +1004,6 @@ def push_unsubscribe(u):
 @admin_required
 def admin_broadcast(u):
     title = (request.form.get("title") or "").strip()[:120] or "NUYAS"
-    # body can be HTML from editor — strip tags for push body, keep text
     raw = request.form.get("body") or ""
     import re as _re
     text = _re.sub(r"<[^>]+>", " ", raw)
@@ -1010,6 +1014,79 @@ def admin_broadcast(u):
         return redirect(url_for("admin") + "#broadcast")
     n = broadcast_push(title, text, url=url, kind="broadcast", created_by=u["id"])
     flash(f"Arifa imetumwa kwa vifaa {n}.")
+    return redirect(url_for("admin") + "#broadcast")
+
+@app.route("/notifications")
+@login_required
+def notifications_page(u):
+    try:
+        items = db.table("notifications").select("*").order("id", desc=True).limit(80).execute().data or []
+    except Exception:
+        items = []
+    read_ids = set()
+    try:
+        rows = db.table("notification_reads").select("notification_id").eq("user_id", u["id"]).execute().data or []
+        read_ids = {r["notification_id"] for r in rows}
+    except Exception:
+        pass
+    for n in items:
+        n["is_read"] = n["id"] in read_ids
+    # mark all visible as read
+    try:
+        for n in items:
+            if not n["is_read"]:
+                db.table("notification_reads").upsert({
+                    "user_id": u["id"],
+                    "notification_id": n["id"],
+                }).execute()
+                n["is_read"] = True
+    except Exception:
+        pass
+    return render_template("notifications.html", items=items)
+
+@app.route("/api/notifications/unread")
+@login_required
+def notifications_unread(u):
+    try:
+        all_n = db.table("notifications").select("id").order("id", desc=True).limit(100).execute().data or []
+        ids = [x["id"] for x in all_n]
+        if not ids:
+            return jsonify(count=0)
+        reads = db.table("notification_reads").select("notification_id").eq("user_id", u["id"]).in_("notification_id", ids).execute().data or []
+        read_ids = {r["notification_id"] for r in reads}
+        count = sum(1 for i in ids if i not in read_ids)
+        return jsonify(count=count)
+    except Exception:
+        return jsonify(count=0)
+
+@app.route("/admin/notification/<int:nid>/edit", methods=["GET", "POST"])
+@admin_required
+def admin_notification_edit(u, nid):
+    r = db.table("notifications").select("*").eq("id", nid).limit(1).execute().data
+    if not r:
+        abort(404)
+    n = r[0]
+    if request.method == "POST":
+        title = (request.form.get("title") or "").strip()[:120]
+        body = (request.form.get("body") or "").strip()[:500]
+        url = (request.form.get("url") or "/").strip() or "/"
+        if not title or not body:
+            flash("Jaza kichwa na ujumbe.")
+            return redirect(url_for("admin_notification_edit", nid=nid))
+        db.table("notifications").update({"title": title, "body": body, "url": url}).eq("id", nid).execute()
+        flash("Arifa imesasishwa.")
+        return redirect(url_for("admin") + "#broadcast")
+    return render_template("admin_notification_edit.html", n=n)
+
+@app.route("/admin/notification/<int:nid>/delete", methods=["POST"])
+@admin_required
+def admin_notification_delete(u, nid):
+    try:
+        db.table("notification_reads").delete().eq("notification_id", nid).execute()
+    except Exception:
+        pass
+    db.table("notifications").delete().eq("id", nid).execute()
+    flash("Arifa imefutwa.")
     return redirect(url_for("admin") + "#broadcast")
 
 # ---------- PWA ----------
