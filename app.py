@@ -208,7 +208,30 @@ def lesson(u, lid):
     if not (r[0]["is_free"] or u["premium"] or u["is_admin"]):
         flash("Somo hili ni la wanachama. Lipia ili kuendelea.")
         return redirect(url_for("pay"))
-    return render_template("lesson.html", l=r[0])
+    l = r[0]
+    # Masomo yote ya kozi hii kwa mpangilio uleule wa ukurasa wa kozi
+    course_row = db.table("courses").select("id,title").eq("id", l["course_id"]).limit(1).execute().data
+    siblings = db.table("lessons").select("id,title,is_free,position").eq("course_id", l["course_id"]).order("position").order("id").execute().data or []
+    can_access = bool(u["premium"] or u["is_admin"])
+    idx = next((i for i, x in enumerate(siblings) if x["id"] == lid), 0)
+    total = len(siblings) or 1
+    prev_l = siblings[idx - 1] if idx > 0 else None
+    next_l = siblings[idx + 1] if idx < len(siblings) - 1 else None
+    locked_count = sum(1 for x in siblings if not (x["is_free"] or can_access))
+    return render_template(
+        "lesson.html",
+        l=l,
+        course=course_row[0] if course_row else None,
+        siblings=siblings,
+        idx=idx,
+        num=idx + 1,
+        total=total,
+        pct=int(round((idx + 1) * 100 / total)),
+        prev_l=prev_l,
+        next_l=next_l,
+        can_access=can_access,
+        locked_count=locked_count,
+    )
 
 # ---------- ClickPesa + Manual payments ----------
 CP = "https://api.clickpesa.com/third-parties"
