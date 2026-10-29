@@ -265,11 +265,20 @@ input:focus, textarea:focus, select:focus {
 .chk { display: flex; gap: 9px; align-items: flex-start; font-weight: 500; margin: 12px 0; font-size: 14px }
 .chk input { width: auto; margin-top: 2px }
 .flash {
-  background: #fef3c7; color: #92400e;
-  border: 1px solid #fcd34d; padding: 11px 14px;
-  border-radius: 11px; margin: 0 0 14px; font-size: 14px;
+  position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top));
+  transform: translateX(-50%) translateY(-120%);
+  z-index: 100; max-width: min(420px, calc(100vw - 24px));
+  margin: 0; padding: 12px 18px; border-radius: 14px;
+  background: #064e3b; color: #ecfdf5; border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 12px 40px -8px rgba(0,0,0,.45);
+  font-size: 14px; font-weight: 600; text-align: center;
+  opacity: 0; pointer-events: none;
+  transition: transform .35s cubic-bezier(.22,1,.36,1), opacity .3s ease;
 }
-html[data-theme="dark"] .flash { background: #422006; color: #fde68a; border-color: #854d0e }
+.flash.show {
+  transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto;
+}
+html[data-theme="dark"] .flash { background: #064e3b; color: #ecfdf5; border-color: rgba(255,255,255,.12) }
 .muted { color: var(--mut); font-size: 13.5px }
 .tag {
   display: inline-flex; gap: 4px; align-items: center;
@@ -533,7 +542,6 @@ html[data-theme="dark"] .anum { color: var(--g) }
         <a href="/login">Ingia</a>
         <a class="btn" href="/register">Jisajili</a>
       {% endif %}
-      {% if user %}<a href="/notifications" class="notif-bell" id="notifBellDesk" title="Arifa" aria-label="Arifa" style="margin-right:4px;text-decoration:none">{{ icon('bell',18) }}<span class="dot" id="notifDotDesk"></span><span class="nbadge" id="notifCountDesk"></span></a>{% endif %}
       <button type="button" class="theme-btn" id="themeBtn" aria-label="Badili theme" title="Badili theme">{{ icon('moon',18) }}</button>
     </nav>
     <div style="display:flex;gap:8px;align-items:center">
@@ -547,7 +555,7 @@ html[data-theme="dark"] .anum { color: var(--g) }
 </header>
 
 <main>
-  {% for m in get_flashed_messages() %}<p class="flash">{{ m }}</p>{% endfor %}
+  {% for m in get_flashed_messages() %}<div class="flash" role="status">{{ m }}</div>{% endfor %}
   {% block c %}{% endblock %}
 </main>
 
@@ -674,6 +682,19 @@ if("serviceWorker" in navigator) addEventListener("load", () => navigator.servic
 })();
 </script>
 {% endif %}
+
+
+<script>
+(function(){
+  document.querySelectorAll('.flash').forEach(el=>{
+    requestAnimationFrame(()=>el.classList.add('show'));
+    setTimeout(()=>{
+      el.classList.remove('show');
+      setTimeout(()=>el.remove(), 350);
+    }, 1000);
+  });
+})();
+</script>
 
 </body>
 </html>
