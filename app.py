@@ -1184,6 +1184,98 @@ def get_tafsiri_videos():
     except Exception:
         return []
 
+DEFAULT_TAFSIRI_DUR = 600  # sekunde (dakika 10) ikiwa muda haujawekwa
+
+def tafsiri_schedule():
+    """Orodha ya video + muda; hesabu ya nafasi ya kimataifa (kila mtu anaona kitu kimoja)."""
+    vids = get_tafsiri_videos()
+    items = []
+    for v in vids:
+        dur = int(v.get("duration_sec") or 0)
+        if dur <= 0:
+            dur = DEFAULT_TAFSIRI_DUR
+        items.append({
+            "id": v["id"],
+            "title": v.get("title") or "Tafsiri",
+            "video_url": v["video_url"],
+            "position": v.get("position") or 1,
+            "duration_sec": dur,
+        })
+    return items
+
+def tafsiri_now_payload():
+    items = tafsiri_schedule()
+    server_ts = int(NOW().timestamp())
+    if not items:
+        return {"ok": False, "server_ts": server_ts, "items": [], "current": None}
+    total = sum(x["duration_sec"] for x in items)
+    if total <= 0:
+        total = len(items) * DEFAULT_TAFSIRI_DUR
+    offset = server_ts % total
+    acc = 0
+    current = None
+    for i, x in enumerate(items):
+        if offset < acc + x["duration_sec"]:
+            seek = max(0, offset - acc)
+            # usizidishe mwisho wa video
+            if seek >= x["duration_sec"] - 1:
+                seek = max(0, x["duration_sec"] - 2)
+            current = {
+                "index": i,
+                "id": x["id"],
+                "title": x["title"],
+                "video_url": x["video_url"],
+                "position": x["position"],
+                "duration_sec": x["duration_sec"],
+                "seek_to": seek,
+                "ends_in": x["duration_sec"] - seek,
+            }
+            break
+        acc += x["duration_sec"]
+    if current is None and items:
+        x = items[0]
+        current = {
+            "index": 0, "id": x["id"], "title": x["title"], "video_url": x["video_url"],
+            "position": x["position"], "duration_sec": x["duration_sec"], "seek_to": 0,
+            "ends_in": x["duration_sec"],
+        }
+    return {
+        "ok": True,
+        "server_ts": server_ts,
+        "total_cycle_sec": total,
+        "items": items,
+        "current": current,
+    }
+
+@app.route("/api/live/tafsiri/now")
+@login_required
+def api_tafsiri_now(u):
+    return jsonify(tafsiri_now_payload())
+
+@app.route("/api/live/tafsiri/duration", methods=["POST"])
+@login_required
+def api_tafsiri_duration(u):
+    """Mteja anaripoti muda halisi wa video baada ya metadata — inasaidia sync ya wote."""
+    try:
+        j = request.get_json(force=True, silent=True) or {}
+        vid = int(j.get("id") or 0)
+        dur = int(float(j.get("duration_sec") or 0))
+    except Exception:
+        return jsonify({"ok": False}), 400
+    if not vid or dur < 5 or dur > 86400:
+        return jsonify({"ok": False}), 400
+    try:
+        row = db.table("tafsiri_videos").select("id,duration_sec").eq("id", vid).limit(1).execute().data
+        if not row:
+            return jsonify({"ok": False}), 404
+        # sasisha tu kama haipo au tofauti kubwa (>3s)
+        old = int(row[0].get("duration_sec") or 0)
+        if abs(old - dur) > 3 or old <= 0:
+            db.table("tafsiri_videos").update({"duration_sec": dur}).eq("id", vid).execute()
+        return jsonify({"ok": True, "duration_sec": dur})
+    except Exception:
+        return jsonify({"ok": False}), 500
+
 @app.route("/live")
 @login_required
 def live(u):
@@ -1222,6 +1314,14 @@ def admin_tafsiri_upload(u):
     except Exception:
         pos = 1
     pos = max(1, min(114, pos))
+    try:
+        dur = int(request.form.get("duration_sec") or 0)
+    except Exception:
+        dur = 0
+    if dur < 0:
+        dur = 0
+    if dur > 86400:
+        dur = 86400
     file = request.files.get("video")
     url = (request.form.get("video_url") or "").strip()
     if file and file.filename:
@@ -1246,7 +1346,10 @@ def admin_tafsiri_upload(u):
         flash("Weka faili la video au URL.")
         return redirect(url_for("admin") + "#live")
     try:
-        db.table("tafsiri_videos").insert({"title": title, "video_url": url, "position": pos, "active": True}).execute()
+        row = {"title": title, "video_url": url, "position": pos, "active": True}
+        if dur > 0:
+            row["duration_sec"] = dur
+        db.table("tafsiri_videos").insert(row).execute()
         flash("Video imeongezwa.")
     except Exception:
         flash("Imeshindikana kuongeza video. Hakikisha migration_v6.sql imefanywa.")

@@ -283,6 +283,7 @@
   <form method="post" action="/admin/tafsiri" enctype="multipart/form-data" class="card">
     <input type="text" name="title" placeholder="Jina la video (mf. Surah Al-Baqarah 1–5)" required style="margin-bottom:8px">
     <input type="number" name="position" value="1" min="1" max="114" placeholder="Namba (1–114)" style="margin-bottom:8px">
+    <input type="number" name="duration_sec" value="" min="5" max="86400" placeholder="Muda (sekunde) — hiari, mf. 600 = dak 10" style="margin-bottom:8px">
     <label style="display:block;font-size:12px;margin-bottom:4px;opacity:.75">Faili la video (MP4 / WebM)</label>
     <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime" style="margin-bottom:8px">
     <label style="display:block;font-size:12px;margin-bottom:4px;opacity:.75">au URL ya video</label>
@@ -295,7 +296,7 @@
   <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
     <div>
       <b>#{{ v.position }} — {{ v.title }}</b>
-      <div class="muted" style="font-size:11px;word-break:break-all">{{ v.video_url[:80] }}{% if v.video_url|length > 80 %}…{% endif %}</div>
+      <div class="muted" style="font-size:11px;word-break:break-all">{{ v.video_url[:80] }}{% if v.video_url|length > 80 %}…{% endif %}{% if v.duration_sec %} · {{ v.duration_sec }}s{% endif %}</div>
       <span class="tag">{{ 'Active' if v.active else 'Off' }}</span>
     </div>
     <div class="adm-actions">

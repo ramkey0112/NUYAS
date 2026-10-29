@@ -131,7 +131,7 @@
       <div class="ico">{{ icon('layers',18) }}</div>
       <div>
         <b>Qurani Tafsiri</b>
-        <span>Video zinazocheza kwa mfululizo</span>
+        <span>Stream moja — wote mnaona kitu kimoja</span>
       </div>
       <span class="dot"></span>
     </button>
@@ -180,6 +180,8 @@
 
   function playIptv(src, title, sub){
     mode = 'iptv';
+    if(syncTimer){ clearInterval(syncTimer); syncTimer = null; }
+    tafsiriSync = null;
     stopHls();
     video.loop = false;
     chTitle.textContent = title;
@@ -207,33 +209,115 @@
     }
   }
 
-  function playTafsiriAt(i){
-    if(!tafsiriList.length){
+  let tafsiriSync = null; // current API payload current
+  let syncTimer = null;
+  let reportingDur = {};
+
+  function reportDuration(id, sec){
+    if(!id || !sec || sec < 5 || reportingDur[id]) return;
+    reportingDur[id] = true;
+    fetch('/api/live/tafsiri/duration', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id:id, duration_sec: Math.round(sec)})
+    }).catch(()=>{}).finally(()=>{ setTimeout(()=>{ delete reportingDur[id]; }, 60000); });
+  }
+
+  async function fetchTafsiriNow(){
+    try{
+      const r = await fetch('/api/live/tafsiri/now', {cache:'no-store'});
+      if(!r.ok) return null;
+      return await r.json();
+    }catch(e){ return null; }
+  }
+
+  function applyTafsiriCurrent(cur, serverTs){
+    if(!cur) return;
+    tafsiriSync = cur;
+    mode = 'tafsiri';
+    stopHls();
+    chTitle.textContent = cur.title || 'Tafsiri';
+    chSub.textContent = 'Namba ' + (cur.position || '') + ' · Live pamoja';
+    showLoad(true);
+    video.loop = false;
+    const needReload = !video.src || !video.src.includes(String(cur.video_url).split('?')[0].slice(-40));
+    const startAt = Math.max(0, Number(cur.seek_to) || 0);
+
+    function seekAndPlay(){
+      try{
+        if(video.duration && isFinite(video.duration) && startAt < video.duration){
+          video.currentTime = startAt;
+        } else if(startAt > 0){
+          video.currentTime = startAt;
+        }
+      }catch(e){}
+      video.play().then(()=>{ setPaused(false); showLoad(false); }).catch(()=>{ showLoad(false); setPaused(true); });
+      if(video.duration && isFinite(video.duration) && video.duration > 5){
+        reportDuration(cur.id, video.duration);
+      }
+    }
+
+    if(needReload){
+      video.src = cur.video_url;
+      video.load();
+      const onMeta = ()=>{
+        video.removeEventListener('loadedmetadata', onMeta);
+        seekAndPlay();
+      };
+      video.addEventListener('loadedmetadata', onMeta);
+      // fallback
+      setTimeout(()=>{ if(video.readyState >= 1) seekAndPlay(); }, 2500);
+    } else {
+      seekAndPlay();
+    }
+  }
+
+  async function playTafsiriLive(){
+    if(syncTimer){ clearInterval(syncTimer); syncTimer = null; }
+    showLoad(true);
+    chTitle.textContent = 'Qurani Tafsiri';
+    chSub.textContent = 'Inapakia stream...';
+    const data = await fetchTafsiriNow();
+    if(!data || !data.ok || !data.current){
       chTitle.textContent = 'Qurani Tafsiri';
       chSub.textContent = 'Hakuna video bado';
       showLoad(false);
       setPaused(true);
       return;
     }
-    mode = 'tafsiri';
-    stopHls();
-    tafsiriIdx = ((i % tafsiriList.length) + tafsiriList.length) % tafsiriList.length;
-    const v = tafsiriList[tafsiriIdx];
-    chTitle.textContent = v.title || 'Tafsiri';
-    chSub.textContent = 'Namba ' + (v.position || (tafsiriIdx+1));
-    showLoad(true);
-    video.loop = false;
-    video.src = v.video_url;
-    video.load();
-    video.play().then(()=>{ setPaused(false); showLoad(false); }).catch(()=>{ showLoad(false); setPaused(true); });
+    applyTafsiriCurrent(data.current, data.server_ts);
+    // resync kila sekunde 25 ili drift isiongezeke
+    syncTimer = setInterval(async ()=>{
+      if(mode !== 'tafsiri') return;
+      const d = await fetchTafsiriNow();
+      if(!d || !d.current) return;
+      const cur = d.current;
+      // video tofauti → badilisha
+      if(!tafsiriSync || tafsiriSync.id !== cur.id){
+        applyTafsiriCurrent(cur, d.server_ts);
+        return;
+      }
+      // drift > 4s → re-seek
+      try{
+        const drift = Math.abs((video.currentTime || 0) - (cur.seek_to || 0));
+        if(drift > 4 && !video.seeking){
+          video.currentTime = cur.seek_to;
+        }
+      }catch(e){}
+    }, 25000);
   }
 
   video.addEventListener('waiting', ()=> showLoad(true));
   video.addEventListener('playing', ()=>{ showLoad(false); setPaused(false); });
   video.addEventListener('pause', ()=> setPaused(true));
   video.addEventListener('ended', ()=>{
-    if(mode === 'tafsiri' && tafsiriList.length){
-      playTafsiriAt(tafsiriIdx + 1);
+    if(mode === 'tafsiri'){
+      // chukua nafasi inayofuata kutoka server (sio local index)
+      playTafsiriLive();
+    }
+  });
+  video.addEventListener('loadedmetadata', ()=>{
+    if(mode === 'tafsiri' && tafsiriSync && video.duration > 5){
+      reportDuration(tafsiriSync.id, video.duration);
     }
   });
   video.addEventListener('seeking', ()=>{
@@ -285,7 +369,7 @@
       cards.forEach(x=>x.classList.remove('on'));
       c.classList.add('on');
       if(c.dataset.type === 'tafsiri'){
-        playTafsiriAt(0);
+        playTafsiriLive();
       } else {
         playIptv(c.dataset.src, c.dataset.title, c.dataset.sub);
       }
