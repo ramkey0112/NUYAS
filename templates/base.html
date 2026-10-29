@@ -572,7 +572,7 @@ html[data-theme="dark"] .anum { color: var(--g) }
   <a href="/dashboard" class="{{ 'on' if ep=='dashboard' }}">{{ icon('home') }}Nyumbani</a>
   <a href="/quran" class="{{ 'on' if ep in ('quran','surah') }}">{{ icon('book') }}Qurani</a>
   <a href="/live" class="{{ 'on' if ep=='live' }}" style="color:inherit">📺 Live</a>
-  <a href="/community" class="{{ 'on' if ep in ('community','maswali','swali') }}">{{ icon('users') }}Jamii</a>
+  <a href="/courses" class="{{ 'on' if ep in ('courses','course','lesson') }}">{{ icon('book') }}Kozi</a>
   <a href="/profile" class="{{ 'on' if ep=='profile' }}">{{ icon('user') }}Wasifu</a>
 </nav>
 {% endif %}

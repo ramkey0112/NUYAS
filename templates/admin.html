@@ -33,6 +33,7 @@
   <a href="#adhkar" data-sec="adhkar">Adhkar</a>
   <a href="#maswali" data-sec="maswali">Maswali</a>
   <a href="#banner" data-sec="banner">Banner</a>
+  <a href="#live" data-sec="live">Live TV</a>
   <a href="#broadcast" data-sec="broadcast">Arifa</a>
 </div>
 
@@ -260,6 +261,57 @@
   <p class="muted">Hakuna arifa bado.</p>
   {% endfor %}
 </section>
+
+{# ===== LIVE TV ===== #}
+<section class="adm-sec" id="sec-live">
+  <h2>Live Streams (IPTV)</h2>
+  <p class="muted" style="margin-bottom:12px">Hariri link za channel. Mabadiliko yanaonekana papo hapo kwa watumiaji.</p>
+  <form method="post" action="/admin/live" class="card">
+    {% for s in live_cfg %}
+    <div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--line)">
+      <b style="display:block;margin-bottom:8px">{{ s.key.replace('_',' ').title() }}</b>
+      <input type="text" name="{{ s.key }}_title" value="{{ s.title }}" placeholder="Jina" style="margin-bottom:6px">
+      <input type="text" name="{{ s.key }}_subtitle" value="{{ s.subtitle }}" placeholder="Maelezo mafupi" style="margin-bottom:6px">
+      <input type="url" name="{{ s.key }}_url" value="{{ s.url }}" placeholder="Stream URL (m3u8)" required>
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn-sm btn-ok">Hifadhi streams</button>
+  </form>
+
+  <h2 style="margin-top:28px">Qurani Tafsiri — Video</h2>
+  <p class="muted" style="margin-bottom:12px">Upload video nyingi. Pangilia kwa namba 1–114. Zinacheza kwa mfululizo (loop).</p>
+  <form method="post" action="/admin/tafsiri" enctype="multipart/form-data" class="card">
+    <input type="text" name="title" placeholder="Jina la video (mf. Surah Al-Baqarah 1–5)" required style="margin-bottom:8px">
+    <input type="number" name="position" value="1" min="1" max="114" placeholder="Namba (1–114)" style="margin-bottom:8px">
+    <label style="display:block;font-size:12px;margin-bottom:4px;opacity:.75">Faili la video (MP4 / WebM)</label>
+    <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime" style="margin-bottom:8px">
+    <label style="display:block;font-size:12px;margin-bottom:4px;opacity:.75">au URL ya video</label>
+    <input type="url" name="video_url" placeholder="https://..." style="margin-bottom:10px">
+    <button type="submit" class="btn-sm btn-ok">Ongeza video</button>
+  </form>
+
+  <h3 style="margin-top:18px">Orodha ({{ tafsiri_all|length }})</h3>
+  {% for v in tafsiri_all %}
+  <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div>
+      <b>#{{ v.position }} — {{ v.title }}</b>
+      <div class="muted" style="font-size:11px;word-break:break-all">{{ v.video_url[:80] }}{% if v.video_url|length > 80 %}…{% endif %}</div>
+      <span class="tag">{{ 'Active' if v.active else 'Off' }}</span>
+    </div>
+    <div class="adm-actions">
+      <form method="post" action="/admin/tafsiri/{{ v.id }}/toggle">
+        <button type="submit" class="btn-sm btn-mute">{{ 'Zima' if v.active else 'Washa' }}</button>
+      </form>
+      <form method="post" action="/admin/tafsiri/{{ v.id }}/delete" onsubmit="return confirm('Futa video hii?')">
+        <button type="submit" class="btn-sm btn-del">Futa</button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <p class="muted">Hakuna video bado. Ongeza hapo juu.</p>
+  {% endfor %}
+</section>
+
 <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
 
@@ -274,7 +326,7 @@
   }
   navs.forEach(a => a.addEventListener('click', e => { e.preventDefault(); show(a.dataset.sec); }));
   const hash = (location.hash || '#malipo').slice(1);
-  show(['malipo','masomo','adhkar','maswali','banner','broadcast'].includes(hash) ? hash : 'malipo');
+  show(['malipo','masomo','adhkar','maswali','banner','live','broadcast'].includes(hash) ? hash : 'malipo');
 
   function bindSearch(inputId, itemSel){
     const inp = document.getElementById(inputId);

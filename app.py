@@ -606,6 +606,25 @@ def admin(u):
         notifs = db.table("notifications").select("*").order("id", desc=True).limit(40).execute().data or []
     except Exception:
         notifs = []
+    try:
+        live_rows = db.table("live_streams").select("*").execute().data or []
+        live_by = {r["key"]: r for r in live_rows}
+    except Exception:
+        live_by = {}
+    live_cfg = []
+    for k in ("quran_tv", "makkah", "quran_live"):
+        d = DEFAULT_STREAMS[k]
+        r = live_by.get(k) or {}
+        live_cfg.append({
+            "key": k,
+            "title": r.get("title") or d["title"],
+            "subtitle": r.get("subtitle") or d["subtitle"],
+            "url": r.get("url") or d["url"],
+        })
+    try:
+        tafsiri_all = db.table("tafsiri_videos").select("*").order("position").order("id").execute().data or []
+    except Exception:
+        tafsiri_all = []
     return render_template(
         "admin.html",
         pays=pays,
@@ -615,6 +634,8 @@ def admin(u):
         qs=qs,
         adhkar=adhkar,
         notifs=notifs,
+        live_cfg=live_cfg,
+        tafsiri_all=tafsiri_all,
     )
 
 @app.route("/admin/grant", methods=["POST"])
@@ -1129,7 +1150,117 @@ def offline():
     return render_template("offline.html")
 
 # ---------- live TV (free) ----------
+DEFAULT_STREAMS = {
+    "quran_tv": {"title": "Quran TV Live", "subtitle": "Al Quran Al Kareem", "url": "http://m.live.net.sa:1935/live/quran/playlist.m3u8"},
+    "makkah": {"title": "Makkah Live", "subtitle": "Masjid al-Haram & Nabawi", "url": "http://m.live.net.sa:1935/live/sunnah/playlist.m3u8"},
+    "quran_live": {"title": "Quran Live", "subtitle": "Tilawa live", "url": "https://playlist.fasttvcdn.com/pl/dlkqw1ftuvuuzkcb4pxdcg/Iqraafasttv2/playlist.m3u8"},
+}
+
+def get_live_streams():
+    try:
+        rows = db.table("live_streams").select("*").eq("active", True).execute().data or []
+        by_key = {r["key"]: r for r in rows}
+        out = []
+        for k in ("quran_tv", "makkah", "quran_live"):
+            r = by_key.get(k) or {"key": k, **DEFAULT_STREAMS[k]}
+            out.append({"key": k, "title": r.get("title") or DEFAULT_STREAMS[k]["title"],
+                        "subtitle": r.get("subtitle") or DEFAULT_STREAMS[k]["subtitle"],
+                        "url": r.get("url") or DEFAULT_STREAMS[k]["url"]})
+        return out
+    except Exception:
+        return [{"key": k, **v} for k, v in DEFAULT_STREAMS.items()]
+
+def get_tafsiri_videos():
+    try:
+        return db.table("tafsiri_videos").select("*").eq("active", True).order("position").order("id").execute().data or []
+    except Exception:
+        return []
+
 @app.route("/live")
 @login_required
 def live(u):
-    return render_template("live.html")
+    streams = get_live_streams()
+    tafsiri = get_tafsiri_videos()
+    return render_template("live.html", streams=streams, tafsiri=tafsiri)
+
+@app.route("/admin/live", methods=["POST"])
+@admin_required
+def admin_live_save(u):
+    f = request.form
+    for key in ("quran_tv", "makkah", "quran_live"):
+        title = (f.get(f"{key}_title") or "").strip()[:80] or DEFAULT_STREAMS[key]["title"]
+        subtitle = (f.get(f"{key}_subtitle") or "").strip()[:80] or DEFAULT_STREAMS[key]["subtitle"]
+        url = (f.get(f"{key}_url") or "").strip()[:500] or DEFAULT_STREAMS[key]["url"]
+        try:
+            existing = db.table("live_streams").select("key").eq("key", key).limit(1).execute().data
+            row = {"key": key, "title": title, "subtitle": subtitle, "url": url, "kind": "iptv", "active": True,
+                   "updated_at": NOW().isoformat()}
+            if existing:
+                db.table("live_streams").update(row).eq("key", key).execute()
+            else:
+                db.table("live_streams").insert(row).execute()
+        except Exception:
+            flash("Imeshindikana kuhifadhi stream. Hakikisha umefanya migration_v6.sql")
+            return redirect(url_for("admin") + "#live")
+    flash("Live streams zimehifadhiwa.")
+    return redirect(url_for("admin") + "#live")
+
+@app.route("/admin/tafsiri", methods=["POST"])
+@admin_required
+def admin_tafsiri_upload(u):
+    title = (request.form.get("title") or "").strip()[:120] or "Tafsiri"
+    try:
+        pos = int(request.form.get("position") or 1)
+    except Exception:
+        pos = 1
+    pos = max(1, min(114, pos))
+    file = request.files.get("video")
+    url = (request.form.get("video_url") or "").strip()
+    if file and file.filename:
+        ext = (file.filename.rsplit(".", 1)[-1] or "mp4").lower()
+        if ext not in ("mp4", "webm", "mov", "m4v", "mkv"):
+            flash("Aina ya video hairuhusiwi. Tumia MP4 au WebM.")
+            return redirect(url_for("admin") + "#live")
+        path = f"tafsiri/{uuid.uuid4().hex}.{ext}"
+        data = file.read()
+        try:
+            db.storage.from_("videos").upload(path, data, {"content-type": file.content_type or "video/mp4", "upsert": "true"})
+            url = db.storage.from_("videos").get_public_url(path)
+        except Exception:
+            try:
+                db.storage.create_bucket("videos", options={"public": True})
+                db.storage.from_("videos").upload(path, data, {"content-type": file.content_type or "video/mp4", "upsert": "true"})
+                url = db.storage.from_("videos").get_public_url(path)
+            except Exception as e:
+                flash(f"Upload imeshindikana: {e}")
+                return redirect(url_for("admin") + "#live")
+    if not url:
+        flash("Weka faili la video au URL.")
+        return redirect(url_for("admin") + "#live")
+    try:
+        db.table("tafsiri_videos").insert({"title": title, "video_url": url, "position": pos, "active": True}).execute()
+        flash("Video imeongezwa.")
+    except Exception:
+        flash("Imeshindikana kuongeza video. Hakikisha migration_v6.sql imefanywa.")
+    return redirect(url_for("admin") + "#live")
+
+@app.route("/admin/tafsiri/<int:vid>/delete", methods=["POST"])
+@admin_required
+def admin_tafsiri_delete(u, vid):
+    try:
+        db.table("tafsiri_videos").delete().eq("id", vid).execute()
+        flash("Video imefutwa.")
+    except Exception:
+        flash("Imeshindikana kufuta.")
+    return redirect(url_for("admin") + "#live")
+
+@app.route("/admin/tafsiri/<int:vid>/toggle", methods=["POST"])
+@admin_required
+def admin_tafsiri_toggle(u, vid):
+    try:
+        r = db.table("tafsiri_videos").select("active").eq("id", vid).limit(1).execute().data
+        if r:
+            db.table("tafsiri_videos").update({"active": not r[0]["active"]}).eq("id", vid).execute()
+    except Exception:
+        pass
+    return redirect(url_for("admin") + "#live")
