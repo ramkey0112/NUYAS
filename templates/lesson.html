@@ -1,68 +1,280 @@
 {% extends "base.html" %}{% block t %}{{ l.title }} · NUYAS{% endblock %}{% block c %}
+{% set wc = ((l.body or '')|striptags|wordcount) %}
+{% set mins = [1, (wc // 170) + 1]|max %}
+{% set next_locked = next_l and not (next_l.is_free or can_access) %}
+{% set prev_locked = prev_l and not (prev_l.is_free or can_access) %}
 <style>
 .dx{--gx:var(--g);--cx:var(--card);--lx:var(--line);
-  font-size:14px;line-height:1.65;display:flex;flex-direction:column;gap:14px;padding-bottom:16px}
+  font-size:14px;line-height:1.65;display:flex;flex-direction:column;gap:14px;padding-bottom:20px}
 .dx *{box-sizing:border-box}
 .dx p{margin:0}
-.dx .back{display:inline-flex;align-items:center;gap:5px;align-self:flex-start;font-size:12px;font-weight:600;text-decoration:none;
+.dx a{-webkit-tap-highlight-color:transparent}
+.dx svg.ic{flex:none}
+
+/* top bar */
+.dx .top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dx .back{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;text-decoration:none;
   color:var(--mut);padding:6px 12px;border-radius:99px;border:1px solid var(--lx);background:var(--cx)}
-.dx .hero{position:relative;overflow:hidden;border-radius:22px;padding:22px 18px;color:#fff;
+.dx .meta-pill{font-size:11.5px;font-weight:700;color:var(--gx);padding:6px 12px;border-radius:99px;
+  background:color-mix(in srgb,var(--gx) 12%,transparent)}
+
+/* hero */
+.dx .hero{position:relative;overflow:hidden;border-radius:24px;padding:22px 18px 18px;color:#fff;
   background:
-    radial-gradient(120% 140% at 100% 0%,color-mix(in srgb,var(--gold) 42%,transparent),transparent 55%),
+    radial-gradient(120% 140% at 100% 0%,color-mix(in srgb,var(--gold) 45%,transparent),transparent 55%),
     linear-gradient(135deg,#0d5c43 0%,#0a3d2e 55%,#06281d 100%);
-  box-shadow:0 14px 36px -14px rgba(10,61,46,.75)}
-.dx .hero::after{content:"";position:absolute;right:-36px;top:-36px;width:130px;height:130px;border-radius:50%;
-  border:1px solid rgba(255,255,255,.14);box-shadow:0 0 0 16px rgba(255,255,255,.04),0 0 0 32px rgba(255,255,255,.03)}
+  box-shadow:0 18px 40px -16px rgba(10,61,46,.8)}
+.dx .hero::after{content:"";position:absolute;right:-40px;top:-40px;width:140px;height:140px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.14);box-shadow:0 0 0 16px rgba(255,255,255,.04),0 0 0 34px rgba(255,255,255,.03)}
 .dx .hero>*{position:relative;z-index:1}
-.dx .hero .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 12px;border-radius:99px;
+.dx .hero .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.dx .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 12px;border-radius:99px;
   background:color-mix(in srgb,var(--gold) 22%,transparent);border:1px solid color-mix(in srgb,var(--gold) 55%,transparent);color:#f6e3b0}
-.dx .hero h2{margin:12px 0 0;font-size:22px;font-weight:800;line-height:1.25;letter-spacing:-.02em}
-.dx .box{background:var(--cx);border:1px solid var(--lx);border-radius:18px;padding:16px 16px;
+.dx .badge.soft{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);color:#e8f5ef}
+.dx .hero h2{margin:12px 0 0;font-size:23px;font-weight:800;line-height:1.25;letter-spacing:-.02em}
+.dx .hero .crs{margin-top:6px;font-size:12.5px;color:rgba(255,255,255,.72)}
+.dx .prog{margin-top:16px}
+.dx .prog .lbl{display:flex;justify-content:space-between;font-size:11.5px;font-weight:600;color:rgba(255,255,255,.85);margin-bottom:7px}
+.dx .prog .bar{height:8px;border-radius:99px;background:rgba(255,255,255,.16);overflow:hidden}
+.dx .prog .bar i{display:block;height:100%;border-radius:99px;width:0;
+  background:linear-gradient(90deg,#f6e3b0,var(--gold));box-shadow:0 0 12px color-mix(in srgb,var(--gold) 70%,transparent);
+  transition:width .9s cubic-bezier(.2,.8,.2,1)}
+.dx .steps{display:flex;gap:5px;margin-top:10px}
+.dx .steps i{flex:1;height:4px;border-radius:99px;background:rgba(255,255,255,.18)}
+.dx .steps i.done{background:rgba(246,227,176,.85)}
+.dx .steps i.now{background:#fff}
+
+/* cards */
+.dx .box{background:var(--cx);border:1px solid var(--lx);border-radius:20px;padding:16px;
   box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 28px -14px rgba(0,0,0,.2)}
 .dx .au{display:flex;flex-direction:column;gap:10px}
-.dx .au .lb{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
-.dx .au .lb .ico{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;color:var(--gx);
-  background:color-mix(in srgb,var(--gx) 14%,transparent)}
+.dx .au .lb{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700}
+.dx .au .lb small{display:block;font-size:11.5px;font-weight:500;color:var(--mut)}
+.dx .au .lb .ico{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(135deg,var(--gx),#0a3d2e)}
 .dx .au audio{width:100%;height:42px;border-radius:99px;color-scheme:light dark}
-.dx .body{font-size:15px;line-height:1.9;unicode-bidi:plaintext;text-align:start;
+
+.dx .body{font-size:16px;line-height:1.95;unicode-bidi:plaintext;text-align:start;
   padding:6px 2px;max-width:70ch;width:100%;word-break:break-word}
-.dx .body p{margin:0 0 .85em}
+.dx .body p{margin:0 0 .9em}
 .dx .body strong,.dx .body b{font-weight:700}
 .dx .body ul,.dx .body ol{margin:.5em 0;padding-left:1.4em}
-.dx .body h1,.dx .body h2,.dx .body h3{margin:1em 0 .45em;line-height:1.3}
+.dx .body h1,.dx .body h2,.dx .body h3{margin:1.1em 0 .45em;line-height:1.3;color:var(--gx)}
+.dx .body a{color:var(--gx);font-weight:600}
 .dx .body .ql-align-center{text-align:center}
 .dx .body .ql-align-right{text-align:right}
 .dx .body .ql-align-left{text-align:left}
 .dx .body .ql-align-justify{text-align:justify}
-.dx .cta{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:4px}
+.dx .end{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding-top:14px;
+  border-top:1px dashed var(--lx);font-size:12.5px;font-weight:700;color:var(--gx)}
+
+/* pager */
+.dx .pager{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dx .pg{display:flex;flex-direction:column;gap:3px;text-decoration:none;color:inherit;padding:13px 14px;border-radius:18px;
+  border:1px solid var(--lx);background:var(--cx);min-height:76px;justify-content:center;
+  transition:transform .15s,border-color .15s,box-shadow .15s}
+.dx .pg:active{transform:scale(.97)}
+.dx .pg small{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--mut);text-transform:uppercase}
+.dx .pg b{font-size:13.5px;font-weight:700;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dx .pg.next{text-align:right;align-items:flex-end;color:#fff;border:none;
+  background:linear-gradient(135deg,#0d5c43,#0a3d2e);box-shadow:0 12px 26px -12px rgba(10,61,46,.9)}
+.dx .pg.next small{color:#f6e3b0;flex-direction:row-reverse}
+.dx .pg.next.lk{background:linear-gradient(135deg,#8a6a1c,#5b4310)}
+.dx .pg.prev.lk{opacity:.75}
+.dx .pg.off{opacity:.45;pointer-events:none;border-style:dashed}
+.dx .pg.done{grid-column:1/-1;align-items:center;text-align:center;background:linear-gradient(135deg,#0d5c43,#0a3d2e);color:#fff;border:none}
+.dx .pg.done small{color:#f6e3b0}
+.dx .pg.span2{grid-column:1/-1}
+
+/* paywall */
+.dx .vip{position:relative;overflow:hidden;border-radius:22px;padding:20px 18px;color:#2b1f05;
+  background:linear-gradient(135deg,#fff4d2 0%,#f6e3b0 45%,#e6c36a 100%);
+  border:1px solid color-mix(in srgb,var(--gold) 60%,transparent);
+  box-shadow:0 16px 34px -16px rgba(150,110,20,.65)}
+.dx .vip::after{content:"";position:absolute;left:-30px;bottom:-40px;width:120px;height:120px;border-radius:50%;
+  background:rgba(255,255,255,.35);filter:blur(2px)}
+.dx .vip>*{position:relative;z-index:1}
+.dx .vip .tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:4px 11px;border-radius:99px;
+  background:#2b1f05;color:#f6e3b0}
+.dx .vip h3{margin:10px 0 4px;font-size:19px;font-weight:800;line-height:1.3;letter-spacing:-.01em}
+.dx .vip p{font-size:13px;opacity:.85}
+.dx .vip ul{list-style:none;margin:12px 0 14px;padding:0;display:flex;flex-direction:column;gap:7px}
+.dx .vip li{display:flex;gap:8px;align-items:flex-start;font-size:13px;font-weight:600}
+.dx .vip li svg{color:#0d5c43;margin-top:2px}
+.dx .vip .price{display:flex;align-items:baseline;gap:6px;margin-bottom:12px}
+.dx .vip .price b{font-size:26px;font-weight:800;letter-spacing:-.02em}
+.dx .vip .price span{font-size:12px;font-weight:600;opacity:.75}
+.dx .vip .go{display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;font-size:14px;font-weight:800;
+  padding:14px 18px;border-radius:99px;color:#fff;background:linear-gradient(135deg,#0d5c43,#06281d);
+  box-shadow:0 10px 22px -10px rgba(6,40,29,.9)}
+.dx .vip .go:active{transform:scale(.98)}
+.dx .vip .fine{margin-top:9px;text-align:center;font-size:11.5px;font-weight:600;opacity:.7}
+
+/* lesson list */
+.dx details.list{padding:0;overflow:hidden}
+.dx details.list summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;
+  padding:15px 16px;font-size:14px;font-weight:700}
+.dx details.list summary::-webkit-details-marker{display:none}
+.dx details.list summary span{display:flex;align-items:center;gap:8px}
+.dx details.list summary em{font-style:normal;font-size:11.5px;color:var(--mut);font-weight:600}
+.dx details.list[open] summary{border-bottom:1px solid var(--lx)}
+.dx .li{display:flex;align-items:center;gap:12px;padding:12px 16px;text-decoration:none;color:inherit;border-bottom:1px solid var(--lx)}
+.dx .li:last-child{border-bottom:none}
+.dx .li .n{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;font-size:12px;font-weight:800;flex:none;
+  background:color-mix(in srgb,var(--gx) 12%,transparent);color:var(--gx)}
+.dx .li.cur{background:color-mix(in srgb,var(--gx) 9%,transparent)}
+.dx .li.cur .n{background:var(--gx);color:#fff}
+.dx .li.past .n{background:color-mix(in srgb,var(--gx) 25%,transparent)}
+.dx .li .t{flex:1;font-size:13.5px;font-weight:600;line-height:1.4}
+.dx .li .st{font-size:11px;font-weight:700;color:var(--mut);display:flex;align-items:center;gap:4px}
+.dx .li .st.free{color:var(--gx)}
+.dx .li.lk .t{opacity:.7}
+
+.dx .cta{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
 .dx .cta a{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;text-decoration:none;color:var(--gx);
   padding:10px 18px;border-radius:99px;border:1px solid color-mix(in srgb,var(--gx) 40%,var(--lx));
   background:color-mix(in srgb,var(--gx) 8%,transparent)}
 .dx .cta a:active{transform:scale(.97)}
+
+@media (prefers-reduced-motion:no-preference){
+  .dx .hero,.dx .box,.dx .pager,.dx .vip{animation:dxin .45s ease both}
+  .dx .box{animation-delay:.05s}.dx .pager{animation-delay:.1s}
+  @keyframes dxin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+}
 </style>
 
+{% macro chev(dir) %}<svg class="ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{% if dir == 'l' %}<polyline points="15 18 9 12 15 6"/>{% else %}<polyline points="9 18 15 12 9 6"/>{% endif %}</svg>{% endmacro %}
+
 <div class="dx">
-  <a href="/course/{{ l.course_id }}" class="back">{{ icon('reply',14) }} Rudi kwenye kozi</a>
+  <div class="top">
+    <a href="/course/{{ l.course_id }}" class="back">{{ icon('reply',14) }} Rudi kwenye kozi</a>
+    <span class="meta-pill">{{ num }} / {{ total }}</span>
+  </div>
 
   <div class="hero">
-    <span class="badge">{{ icon('book',13) }} Somo</span>
+    <div class="row">
+      <span class="badge">{{ icon('book',13) }} Somo {{ num }}</span>
+      <span class="badge soft">{{ icon('clock',13) }} Dakika {{ mins }}</span>
+      {% if l.is_free %}<span class="badge soft">Bure</span>{% endif %}
+    </div>
     <h2>{{ l.title }}</h2>
+    {% if course %}<div class="crs">{{ course.title }}</div>{% endif %}
+    <div class="prog">
+      <div class="lbl"><span>Maendeleo ya kozi</span><span>{{ pct }}%</span></div>
+      <div class="bar"><i id="pbar" data-w="{{ pct }}"></i></div>
+      {% if total <= 24 %}
+      <div class="steps" aria-hidden="true">
+        {% for s in siblings %}<i class="{{ 'done' if loop.index0 < idx else ('now' if loop.index0 == idx else '') }}"></i>{% endfor %}
+      </div>
+      {% endif %}
+    </div>
   </div>
 
   {% if l.audio_url %}
   <div class="box au">
-    <div class="lb"><span class="ico">{{ icon('play',14) }}</span> Sikiliza somo</div>
+    <div class="lb"><span class="ico">{{ icon('play',15) }}</span><span>Sikiliza somo<small>Sikiliza popote, hata ukiwa safarini</small></span></div>
     <audio controls preload="none" src="{{ l.audio_url }}"></audio>
   </div>
   {% endif %}
 
   <div class="box">
     <div class="body">{{ l.body|safe if l.body else '' }}</div>
+    <div class="end">{{ icon('check',15) }} Umefika mwisho wa somo hili</div>
   </div>
+
+  <nav class="pager" aria-label="Urambazaji wa masomo">
+    {% if prev_l %}
+      <a class="pg prev {{ 'lk' if prev_locked }}" id="goPrev" href="{{ '/pay' if prev_locked else '/lesson/' ~ prev_l.id }}">
+        <small>{{ chev('l') }} Lililopita</small>
+        <b>{{ prev_l.title }}</b>
+      </a>
+    {% else %}
+      <span class="pg prev off"><small>{{ chev('l') }} Lililopita</small><b>Hili ndilo somo la kwanza</b></span>
+    {% endif %}
+
+    {% if next_l %}
+      <a class="pg next {{ 'lk' if next_locked }}" id="goNext" href="{{ '/pay' if next_locked else '/lesson/' ~ next_l.id }}">
+        <small>{% if next_locked %}{{ icon('lock',12) }} Linalofuata{% else %}Linalofuata {{ chev('r') }}{% endif %}</small>
+        <b>{{ next_l.title }}</b>
+      </a>
+    {% else %}
+      <a class="pg next" href="/course/{{ l.course_id }}">
+        <small>Hongera {{ icon('check',12) }}</small>
+        <b>Umemaliza kozi hii</b>
+      </a>
+    {% endif %}
+  </nav>
+
+  {% if not can_access %}
+  <div class="vip">
+    <span class="tag">{{ icon('lock',12) }} UANACHAMA</span>
+    {% if next_locked %}
+      <h3>Somo lifuatalo "{{ next_l.title }}" linakusubiri</h3>
+      <p>Usiache safari ya kujifunza ikiishia hapa. Fungua kila kitu sasa.</p>
+    {% else %}
+      <h3>Fungua masomo yote ya NUYAS</h3>
+      <p>Endelea kujifunza dini yako kwa utaratibu, hatua kwa hatua.</p>
+    {% endif %}
+    <ul>
+      {% if locked_count %}<li>{{ icon('check',15) }} Masomo {{ locked_count }} zaidi ya kozi hii yanafunguka mara moja</li>{% endif %}
+      <li>{{ icon('check',15) }} Masomo ya sauti, sikiliza popote ulipo</li>
+      <li>{{ icon('check',15) }} Kozi mpya na masomo mapya kila wiki</li>
+      <li>{{ icon('check',15) }} Jumuiya na maswali na majibu kwa wanachama</li>
+    </ul>
+    <div class="price"><b>TSh {{ '{:,}'.format(PRICE) }}</b><span>kwa mwezi, chini ya bei ya soda moja kwa siku</span></div>
+    <a class="go" href="/pay">{{ icon('lock',16) }} Fungua masomo yote sasa</a>
+    <div class="fine">Lipa kwa M-Pesa, Tigo Pesa, Airtel Money au Halotel</div>
+  </div>
+  {% endif %}
+
+  <details class="box list">
+    <summary>
+      <span>{{ icon('book',16) }} Masomo yote ya kozi</span>
+      <em>{{ total }} masomo</em>
+    </summary>
+    {% for s in siblings %}
+      {% set lk = not (s.is_free or can_access) %}
+      <a class="li {{ 'cur' if loop.index0 == idx }} {{ 'past' if loop.index0 < idx }} {{ 'lk' if lk }}"
+         href="{{ '/pay' if lk else '/lesson/' ~ s.id }}">
+        <span class="n">{% if loop.index0 < idx %}{{ icon('check',14) }}{% else %}{{ loop.index }}{% endif %}</span>
+        <span class="t">{{ s.title }}</span>
+        {% if lk %}<span class="st">{{ icon('lock',12) }}</span>
+        {% elif s.is_free and not can_access %}<span class="st free">Bure</span>
+        {% elif loop.index0 == idx %}<span class="st free">Sasa</span>{% endif %}
+      </a>
+    {% endfor %}
+  </details>
 
   <div class="cta">
     <a href="/course/{{ l.course_id }}">{{ icon('reply',14) }} Kozi</a>
     <a href="/courses">Kozi zote</a>
   </div>
 </div>
+
+<script>
+(function(){
+  var b=document.getElementById('pbar');
+  if(b){requestAnimationFrame(function(){setTimeout(function(){b.style.width=b.dataset.w+'%'},60)})}
+  // Mishale ya kibodi: kushoto = lililopita, kulia = linalofuata
+  document.addEventListener('keydown',function(e){
+    var t=(e.target.tagName||'').toLowerCase();
+    if(t==='input'||t==='textarea'||t==='audio'||e.metaKey||e.ctrlKey||e.altKey)return;
+    var el=null;
+    if(e.key==='ArrowRight')el=document.getElementById('goNext');
+    if(e.key==='ArrowLeft')el=document.getElementById('goPrev');
+    if(el)location.href=el.getAttribute('href');
+  });
+  // Swipe kwenye simu
+  var x0=null,y0=null;
+  document.addEventListener('touchstart',function(e){x0=e.touches[0].clientX;y0=e.touches[0].clientY},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(x0===null)return;
+    var dx=e.changedTouches[0].clientX-x0,dy=e.changedTouches[0].clientY-y0;x0=null;
+    if(Math.abs(dx)<90||Math.abs(dx)<Math.abs(dy)*2)return;
+    if(e.target.closest&&e.target.closest('audio,.ql-editor,details'))return;
+    var el=document.getElementById(dx<0?'goNext':'goPrev');
+    if(el)location.href=el.getAttribute('href');
+  },{passive:true});
+})();
+</script>
 {% endblock %}
