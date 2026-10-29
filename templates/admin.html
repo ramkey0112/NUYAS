@@ -265,29 +265,29 @@
 {# ===== LIVE TV ===== #}
 <section class="adm-sec" id="sec-live">
   <h2>Live Streams (IPTV)</h2>
-  <p class="muted" style="margin-bottom:12px">Hariri link za channel. Mabadiliko yanaonekana papo hapo kwa watumiaji.</p>
+  <p class="muted" style="margin-bottom:12px">Hariri link za channel (m3u8 IPTV au YouTube live). Mabadiliko yanaonekana papo hapo.</p>
   <form method="post" action="/admin/live" class="card">
     {% for s in live_cfg %}
     <div style="margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--line)">
       <b style="display:block;margin-bottom:8px">{{ s.key.replace('_',' ').title() }}</b>
       <input type="text" name="{{ s.key }}_title" value="{{ s.title }}" placeholder="Jina" style="margin-bottom:6px">
       <input type="text" name="{{ s.key }}_subtitle" value="{{ s.subtitle }}" placeholder="Maelezo mafupi" style="margin-bottom:6px">
-      <input type="url" name="{{ s.key }}_url" value="{{ s.url }}" placeholder="Stream URL (m3u8)" required>
+      <input type="text" name="{{ s.key }}_url" value="{{ s.url }}" placeholder="m3u8 au YouTube link" required>
     </div>
     {% endfor %}
     <button type="submit" class="btn-sm btn-ok">Hifadhi streams</button>
   </form>
 
   <h2 style="margin-top:28px">Qurani Tafsiri — Video</h2>
-  <p class="muted" style="margin-bottom:12px">Upload video nyingi. Pangilia kwa namba 1–114. Zinacheza kwa mfululizo (loop).</p>
+  <p class="muted" style="margin-bottom:12px">Chagua <b>moja</b>: (1) upload faili, au (2) weka link ya MP4/WebM, au (3) weka link ya <b>YouTube</b>. Video zina stream moja — wote mnaona sehemu ile ile.</p>
   <form method="post" action="/admin/tafsiri" enctype="multipart/form-data" class="card">
     <input type="text" name="title" placeholder="Jina la video (mf. Surah Al-Baqarah 1–5)" required style="margin-bottom:8px">
     <input type="number" name="position" value="1" min="1" max="114" placeholder="Namba (1–114)" style="margin-bottom:8px">
-    <input type="number" name="duration_sec" value="" min="5" max="86400" placeholder="Muda (sekunde) — hiari, mf. 600 = dak 10" style="margin-bottom:8px">
-    <label style="display:block;font-size:12px;margin-bottom:4px;opacity:.75">Faili la video (MP4 / WebM)</label>
-    <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime" style="margin-bottom:8px">
-    <label style="display:block;font-size:12px;margin-bottom:4px;opacity:.75">au URL ya video</label>
-    <input type="url" name="video_url" placeholder="https://..." style="margin-bottom:10px">
+    <input type="number" name="duration_sec" value="" min="5" max="86400" placeholder="Muda sekunde (hiari) — YouTube: weka muda sahihi kwa sync bora" style="margin-bottom:8px">
+    <label style="display:block;font-size:12px;margin-bottom:4px;color:var(--mut)">Njia 1: Upload faili (MP4 / WebM)</label>
+    <input type="file" name="video" accept="video/mp4,video/webm,video/quicktime" style="margin-bottom:10px">
+    <label style="display:block;font-size:12px;margin-bottom:4px;color:var(--mut)">Njia 2: Link ya video au YouTube</label>
+    <input type="text" name="video_url" placeholder="https://youtube.com/watch?v=... au https://....mp4" style="margin-bottom:10px">
     <button type="submit" class="btn-sm btn-ok">Ongeza video</button>
   </form>
 

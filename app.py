@@ -1159,10 +1159,22 @@ def offline():
 
 # ---------- live TV (free) ----------
 DEFAULT_STREAMS = {
-    "quran_tv": {"title": "Quran TV Live", "subtitle": "Al Quran Al Kareem", "url": "http://m.live.net.sa:1935/live/quran/playlist.m3u8"},
-    "makkah": {"title": "Makkah Live", "subtitle": "Masjid al-Haram & Nabawi", "url": "http://m.live.net.sa:1935/live/sunnah/playlist.m3u8"},
+    "quran_tv": {"title": "Quran TV Live", "subtitle": "Al Quran Al Kareem", "url": "https://cdn-globecast.akamaized.net/live/eds/saudi_quran/hls_roku/index.m3u8"},
+    "makkah": {"title": "Makkah Live", "subtitle": "Masjid al-Haram & Nabawi", "url": "https://cdn-globecast.akamaized.net/live/eds/saudi_sunnah/hls_roku/index.m3u8"},
     "quran_live": {"title": "Quran Live", "subtitle": "Tilawa live", "url": "https://playlist.fasttvcdn.com/pl/dlkqw1ftuvuuzkcb4pxdcg/Iqraafasttv2/playlist.m3u8"},
 }
+
+def parse_youtube_id(url):
+    if not url:
+        return None
+    u = (url or "").strip()
+    import re
+    m = re.search(r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/live/|youtube\.com/shorts/)([A-Za-z0-9_-]{6,})', u)
+    if m:
+        return m.group(1)
+    m = re.search(r'[?&]v=([A-Za-z0-9_-]{6,})', u)
+    return m.group(1) if m else None
+
 
 def get_live_streams():
     try:

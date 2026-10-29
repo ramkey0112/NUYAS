@@ -21,8 +21,12 @@
 /* ===== CUSTOM PLAYER ===== */
 .dx .pw{position:relative;border-radius:16px;overflow:hidden;background:#050d0a;
   border:1px solid var(--lx);box-shadow:0 10px 32px -12px rgba(0,0,0,.5);aspect-ratio:16/9;user-select:none}
-.dx .pw video{width:100%;height:100%;display:block;background:#000;object-fit:contain;
+.dx .pw video,.dx .pw .ytbox{width:100%;height:100%;display:block;background:#000;object-fit:contain;
   pointer-events:none}
+.dx .pw .ytbox{position:absolute;inset:0;border:0;display:none}
+.dx .pw.yt-on video{visibility:hidden;position:absolute;width:1px;height:1px}
+.dx .pw.yt-on .ytbox{display:block;pointer-events:auto}
+.dx .pw.yt-on .bigplay{display:none!important}
 .dx .pw:fullscreen,.dx .pw:-webkit-full-screen{border-radius:0;border:0;aspect-ratio:auto;width:100vw;height:100vh;max-width:100vw;max-height:100vh;background:#000}
 .dx .pw:fullscreen video,.dx .pw:-webkit-full-screen video{width:100%;height:100%;object-fit:contain}
 .dx .pw:fullscreen .bar,.dx .pw:-webkit-full-screen .bar{opacity:1}
@@ -101,6 +105,7 @@
   <div class="pw paused" id="pw">
     <div class="ltag"><i></i> LIVE</div>
     <video id="vplayer" playsinline webkit-playsinline></video>
+    <div id="ytbox" class="ytbox"></div>
     <div class="load" id="load"><div class="spin"></div></div>
     <div class="bigplay" id="bigplay"><div class="c">{{ icon('play',28) }}</div></div>
     <div class="bar" id="bar">
@@ -138,10 +143,12 @@
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
 <script>
 (function(){
   const video = document.getElementById('vplayer');
+  const ytbox = document.getElementById('ytbox');
   const pw = document.getElementById('pw');
   const load = document.getElementById('load');
   const bigplay = document.getElementById('bigplay');
@@ -155,11 +162,23 @@
   const tafsiriList = {{ tafsiri|tojson }};
   let hls = null;
   let mode = null;
-  let tafsiriIdx = 0;
+  let ytPlayer = null;
+  let ytReady = false;
+  let ytId = null;
+  let mediaKind = 'video'; // video | youtube
+  let tafsiriSync = null;
+  let syncTimer = null;
+  let reportingDur = {};
   let hideBarTimer = null;
+  let ytWantPlay = false;
+  let ytSeekWhenReady = 0;
 
   const playIcon = `{{ icon('play',20) }}`;
   const pauseIcon = `<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
+  const icoVol = `{{ icon('volume',20) }}`;
+  const icoVolX = `{{ icon('volume-x',20) }}`;
+  const icoMax = `{{ icon('maximize',20) }}`;
+  const icoMin = `{{ icon('minimize',20) }}`;
 
   function showLoad(on){ load.classList.toggle('hide', !on); }
   function setPaused(p){
@@ -169,13 +188,121 @@
   function showBar(){
     pw.classList.add('show-bar');
     clearTimeout(hideBarTimer);
-    hideBarTimer = setTimeout(()=>{ if(!video.paused) pw.classList.remove('show-bar'); }, 3200);
+    hideBarTimer = setTimeout(()=>{ if(!isPaused()) pw.classList.remove('show-bar'); }, 3200);
+  }
+  function isPaused(){
+    if(mediaKind === 'youtube' && ytPlayer && ytReady){
+      try{ return ytPlayer.getPlayerState() !== 1; }catch(e){ return true; }
+    }
+    return video.paused;
+  }
+  function setMuteIcon(){
+    let muted = false;
+    if(mediaKind === 'youtube' && ytPlayer && ytReady){
+      try{ muted = ytPlayer.isMuted() || ytPlayer.getVolume()===0; }catch(e){}
+    } else {
+      muted = video.muted || video.volume===0;
+    }
+    btnMute.innerHTML = muted ? icoVolX : icoVol;
+  }
+
+  function parseYtId(url){
+    if(!url) return null;
+    const u = String(url);
+    let m = u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/live\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{6,})/);
+    if(m) return m[1];
+    m = u.match(/[?&]v=([A-Za-z0-9_-]{6,})/);
+    return m ? m[1] : null;
   }
 
   function stopHls(){
     if(hls){ try{ hls.destroy(); }catch(e){} hls = null; }
+    try{ video.pause(); }catch(e){}
     video.removeAttribute('src');
     video.load();
+  }
+
+  function stopYt(){
+    ytWantPlay = false;
+    if(ytPlayer && ytReady){
+      try{ ytPlayer.stopVideo(); }catch(e){}
+    }
+    pw.classList.remove('yt-on');
+    mediaKind = 'video';
+  }
+
+  function ensureYt(id, seek, autoplay){
+    mediaKind = 'youtube';
+    pw.classList.add('yt-on');
+    ytId = id;
+    ytSeekWhenReady = seek || 0;
+    ytWantPlay = !!autoplay;
+    showLoad(true);
+
+    function onReady(){
+      ytReady = true;
+      try{
+        if(ytSeekWhenReady > 0) ytPlayer.seekTo(ytSeekWhenReady, true);
+        if(ytWantPlay) ytPlayer.playVideo();
+        else ytPlayer.pauseVideo();
+        const v = Math.round((+vol.value || 1) * 100);
+        ytPlayer.setVolume(v);
+        if(video.muted) ytPlayer.mute(); else ytPlayer.unMute();
+      }catch(e){}
+      showLoad(false);
+      setPaused(!ytWantPlay);
+      setMuteIcon();
+    }
+
+    if(ytPlayer && ytReady){
+      try{
+        ytPlayer.loadVideoById({ videoId: id, startSeconds: seek || 0 });
+        if(autoplay) ytPlayer.playVideo();
+        showLoad(false);
+        setPaused(!autoplay);
+      }catch(e){ showLoad(false); }
+      return;
+    }
+
+    const boot = ()=>{
+      if(ytPlayer) return;
+      ytPlayer = new YT.Player('ytbox', {
+        width: '100%', height: '100%',
+        videoId: id,
+        playerVars: {
+          autoplay: autoplay ? 1 : 0,
+          controls: 0,
+          modestbranding: 1,
+          rel: 0,
+          playsinline: 1,
+          fs: 0,
+          disablekb: 1,
+          start: Math.floor(seek || 0)
+        },
+        events: {
+          onReady: onReady,
+          onStateChange: (e)=>{
+            // 1 playing, 2 paused, 0 ended, 3 buffering
+            if(e.data === 1){ showLoad(false); setPaused(false); }
+            if(e.data === 2){ setPaused(true); }
+            if(e.data === 3){ showLoad(true); }
+            if(e.data === 0){
+              if(mode === 'tafsiri') playTafsiriLive();
+            }
+          },
+          onError: ()=>{ showLoad(false); setPaused(true); }
+        }
+      });
+    };
+
+    if(window.YT && window.YT.Player) boot();
+    else {
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = function(){
+        if(typeof prev === 'function') prev();
+        boot();
+      };
+    }
   }
 
   function playIptv(src, title, sub){
@@ -183,21 +310,50 @@
     if(syncTimer){ clearInterval(syncTimer); syncTimer = null; }
     tafsiriSync = null;
     stopHls();
-    video.loop = false;
+    stopYt();
     chTitle.textContent = title;
     chSub.textContent = sub;
     showLoad(true);
     setPaused(true);
 
+    const yid = parseYtId(src);
+    if(yid){
+      ensureYt(yid, 0, true);
+      return;
+    }
+
+    mediaKind = 'video';
+    pw.classList.remove('yt-on');
+
     if(window.Hls && Hls.isSupported()){
-      hls = new Hls({ enableWorker:true, lowLatencyMode:true, maxBufferLength:30 });
+      hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        backBufferLength: 30,
+        maxBufferLength: 45,
+        maxMaxBufferLength: 60,
+        manifestLoadingMaxRetry: 6,
+        levelLoadingMaxRetry: 6,
+        fragLoadingMaxRetry: 8,
+        fragLoadingRetryDelay: 1000,
+        xhrSetup: function(xhr){ try{ xhr.withCredentials = false; }catch(e){} }
+      });
       hls.loadSource(src);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, ()=>{
         video.play().then(()=>{ setPaused(false); showLoad(false); }).catch(()=>{ showLoad(false); setPaused(true); });
       });
       hls.on(Hls.Events.ERROR, (e, data)=>{
-        if(data.fatal){ showLoad(false); setPaused(true); }
+        if(!data.fatal) return;
+        if(data.type === Hls.ErrorTypes.NETWORK_ERROR){
+          try{ hls.startLoad(); }catch(err){}
+          setTimeout(()=>{ try{ hls.startLoad(); }catch(err){} }, 1500);
+        } else if(data.type === Hls.ErrorTypes.MEDIA_ERROR){
+          try{ hls.recoverMediaError(); }catch(err){}
+        } else {
+          showLoad(false);
+          setPaused(true);
+        }
       });
     } else if(video.canPlayType('application/vnd.apple.mpegurl')){
       video.src = src;
@@ -205,13 +361,11 @@
         video.play().then(()=>{ setPaused(false); showLoad(false); }).catch(()=>{ showLoad(false); setPaused(true); });
       }, {once:true});
     } else {
-      showLoad(false);
+      // direct mp4 etc
+      video.src = src;
+      video.play().then(()=>{ setPaused(false); showLoad(false); }).catch(()=>{ showLoad(false); setPaused(true); });
     }
   }
-
-  let tafsiriSync = null; // current API payload current
-  let syncTimer = null;
-  let reportingDur = {};
 
   function reportDuration(id, sec){
     if(!id || !sec || sec < 5 || reportingDur[id]) return;
@@ -230,7 +384,7 @@
     }catch(e){ return null; }
   }
 
-  function applyTafsiriCurrent(cur, serverTs){
+  function applyTafsiriCurrent(cur){
     if(!cur) return;
     tafsiriSync = cur;
     mode = 'tafsiri';
@@ -238,37 +392,42 @@
     chTitle.textContent = cur.title || 'Tafsiri';
     chSub.textContent = 'Namba ' + (cur.position || '') + ' · Live pamoja';
     showLoad(true);
-    video.loop = false;
-    const needReload = !video.src || !video.src.includes(String(cur.video_url).split('?')[0].slice(-40));
     const startAt = Math.max(0, Number(cur.seek_to) || 0);
+    const yid = parseYtId(cur.video_url);
 
-    function seekAndPlay(){
-      try{
-        if(video.duration && isFinite(video.duration) && startAt < video.duration){
-          video.currentTime = startAt;
-        } else if(startAt > 0){
-          video.currentTime = startAt;
+    if(yid){
+      stopYt();
+      ensureYt(yid, startAt, true);
+      // YouTube duration from API when ready
+      const tryDur = setInterval(()=>{
+        if(ytPlayer && ytReady){
+          try{
+            const d = ytPlayer.getDuration();
+            if(d && d > 5){ reportDuration(cur.id, d); clearInterval(tryDur); }
+          }catch(e){}
         }
+      }, 1000);
+      setTimeout(()=> clearInterval(tryDur), 15000);
+      return;
+    }
+
+    stopYt();
+    mediaKind = 'video';
+    pw.classList.remove('yt-on');
+    video.loop = false;
+    video.src = cur.video_url;
+    video.load();
+    const onMeta = ()=>{
+      video.removeEventListener('loadedmetadata', onMeta);
+      try{
+        if(startAt > 0 && isFinite(video.duration)) video.currentTime = Math.min(startAt, Math.max(0, video.duration - 1));
+        else if(startAt > 0) video.currentTime = startAt;
       }catch(e){}
       video.play().then(()=>{ setPaused(false); showLoad(false); }).catch(()=>{ showLoad(false); setPaused(true); });
-      if(video.duration && isFinite(video.duration) && video.duration > 5){
-        reportDuration(cur.id, video.duration);
-      }
-    }
-
-    if(needReload){
-      video.src = cur.video_url;
-      video.load();
-      const onMeta = ()=>{
-        video.removeEventListener('loadedmetadata', onMeta);
-        seekAndPlay();
-      };
-      video.addEventListener('loadedmetadata', onMeta);
-      // fallback
-      setTimeout(()=>{ if(video.readyState >= 1) seekAndPlay(); }, 2500);
-    } else {
-      seekAndPlay();
-    }
+      if(video.duration > 5) reportDuration(cur.id, video.duration);
+    };
+    video.addEventListener('loadedmetadata', onMeta);
+    setTimeout(()=>{ if(video.readyState >= 1) onMeta(); }, 3000);
   }
 
   async function playTafsiriLive(){
@@ -284,23 +443,24 @@
       setPaused(true);
       return;
     }
-    applyTafsiriCurrent(data.current, data.server_ts);
-    // resync kila sekunde 25 ili drift isiongezeke
+    applyTafsiriCurrent(data.current);
     syncTimer = setInterval(async ()=>{
       if(mode !== 'tafsiri') return;
       const d = await fetchTafsiriNow();
       if(!d || !d.current) return;
       const cur = d.current;
-      // video tofauti → badilisha
       if(!tafsiriSync || tafsiriSync.id !== cur.id){
-        applyTafsiriCurrent(cur, d.server_ts);
+        applyTafsiriCurrent(cur);
         return;
       }
-      // drift > 4s → re-seek
       try{
-        const drift = Math.abs((video.currentTime || 0) - (cur.seek_to || 0));
-        if(drift > 4 && !video.seeking){
-          video.currentTime = cur.seek_to;
+        let nowT = 0;
+        if(mediaKind === 'youtube' && ytPlayer && ytReady) nowT = ytPlayer.getCurrentTime() || 0;
+        else nowT = video.currentTime || 0;
+        const drift = Math.abs(nowT - (cur.seek_to || 0));
+        if(drift > 4){
+          if(mediaKind === 'youtube' && ytPlayer) ytPlayer.seekTo(cur.seek_to, true);
+          else if(!video.seeking) video.currentTime = cur.seek_to;
         }
       }catch(e){}
     }, 25000);
@@ -309,32 +469,49 @@
   video.addEventListener('waiting', ()=> showLoad(true));
   video.addEventListener('playing', ()=>{ showLoad(false); setPaused(false); });
   video.addEventListener('pause', ()=> setPaused(true));
-  video.addEventListener('ended', ()=>{
-    if(mode === 'tafsiri'){
-      // chukua nafasi inayofuata kutoka server (sio local index)
-      playTafsiriLive();
-    }
-  });
+  video.addEventListener('ended', ()=>{ if(mode === 'tafsiri') playTafsiriLive(); });
   video.addEventListener('loadedmetadata', ()=>{
-    if(mode === 'tafsiri' && tafsiriSync && video.duration > 5){
-      reportDuration(tafsiriSync.id, video.duration);
-    }
+    if(mode === 'tafsiri' && tafsiriSync && video.duration > 5) reportDuration(tafsiriSync.id, video.duration);
   });
   video.addEventListener('seeking', ()=>{
-    if(mode === 'iptv' && !video.paused){
+    if(mode === 'iptv' && mediaKind === 'video' && !video.paused){
       try{ video.currentTime = video.buffered.length ? video.buffered.end(video.buffered.length-1) - 0.5 : video.currentTime; }catch(e){}
     }
   });
 
-  btnPlay.onclick = ()=>{ if(video.paused) video.play().catch(()=>{}); else video.pause(); showBar(); };
-  bigplay.onclick = ()=>{ video.play().catch(()=>{}); showBar(); };
-  const icoVol = `{{ icon('volume',20) }}`;
-  const icoVolX = `{{ icon('volume-x',20) }}`;
-  const icoMax = `{{ icon('maximize',20) }}`;
-  const icoMin = `{{ icon('minimize',20) }}`;
-  function setMuteIcon(){ btnMute.innerHTML = video.muted || video.volume===0 ? icoVolX : icoVol; }
-  btnMute.onclick = ()=>{ video.muted = !video.muted; setMuteIcon(); showBar(); };
-  vol.oninput = ()=>{ video.volume = +vol.value; video.muted = video.volume === 0; setMuteIcon(); };
+  btnPlay.onclick = ()=>{
+    if(mediaKind === 'youtube' && ytPlayer && ytReady){
+      try{
+        const st = ytPlayer.getPlayerState();
+        if(st === 1) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
+      }catch(e){}
+    } else {
+      if(video.paused) video.play().catch(()=>{}); else video.pause();
+    }
+    showBar();
+  };
+  bigplay.onclick = ()=>{
+    if(mediaKind === 'youtube' && ytPlayer) try{ ytPlayer.playVideo(); }catch(e){}
+    else video.play().catch(()=>{});
+    showBar();
+  };
+  btnMute.onclick = ()=>{
+    if(mediaKind === 'youtube' && ytPlayer && ytReady){
+      try{ if(ytPlayer.isMuted()) ytPlayer.unMute(); else ytPlayer.mute(); }catch(e){}
+    } else {
+      video.muted = !video.muted;
+    }
+    setMuteIcon(); showBar();
+  };
+  vol.oninput = ()=>{
+    const v = +vol.value;
+    if(mediaKind === 'youtube' && ytPlayer && ytReady){
+      try{ ytPlayer.setVolume(Math.round(v*100)); if(v===0) ytPlayer.mute(); else ytPlayer.unMute(); }catch(e){}
+    } else {
+      video.volume = v; video.muted = v===0;
+    }
+    setMuteIcon();
+  };
   async function enterFs(){
     try{
       if(pw.requestFullscreen) await pw.requestFullscreen();
@@ -356,10 +533,7 @@
     btnFs.innerHTML = on ? icoMin : icoMax;
     if(!on){ try{ screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); }catch(e){} }
   });
-  document.addEventListener('webkitfullscreenchange', ()=>{
-    const on = !!(document.fullscreenElement || document.webkitFullscreenElement);
-    btnFs.innerHTML = on ? icoMin : icoMax;
-  });
+
   pw.addEventListener('click', showBar);
   pw.addEventListener('mousemove', showBar);
   pw.addEventListener('touchstart', showBar, {passive:true});
@@ -368,11 +542,8 @@
     c.addEventListener('click', ()=>{
       cards.forEach(x=>x.classList.remove('on'));
       c.classList.add('on');
-      if(c.dataset.type === 'tafsiri'){
-        playTafsiriLive();
-      } else {
-        playIptv(c.dataset.src, c.dataset.title, c.dataset.sub);
-      }
+      if(c.dataset.type === 'tafsiri') playTafsiriLive();
+      else playIptv(c.dataset.src, c.dataset.title, c.dataset.sub);
     });
   });
 
