@@ -1,0 +1,209 @@
+{% extends "base.html" %}{% block t %}Live TV{% endblock %}{% block c %}
+<style>
+.dx{--gx:var(--g,#16a36a);--cx:var(--card,#fff);--lx:var(--line,rgba(128,128,128,.22));
+  font-size:12.5px;line-height:1.55;display:flex;flex-direction:column;gap:14px;padding-bottom:8px}
+.dx *{box-sizing:border-box}
+.dx p{margin:0}
+
+/* Hero */
+.dx .hero{position:relative;overflow:hidden;border-radius:18px;padding:18px 16px;color:#fff;
+  background:radial-gradient(120% 140% at 100% 0%,color-mix(in srgb,var(--gold) 42%,transparent),transparent 55%),
+             linear-gradient(135deg,#0d5c43,#0a3d2e 65%,#062a1f);
+  box-shadow:0 12px 28px -12px rgba(10,61,46,.75)}
+.dx .hero::after{content:"";position:absolute;right:-28px;top:-28px;width:120px;height:120px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.14);box-shadow:0 0 0 14px rgba(255,255,255,.04),0 0 0 28px rgba(255,255,255,.03)}
+.dx .hero .badge{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;padding:4px 11px;border-radius:99px;
+  background:rgba(220,38,38,.9);border:1px solid rgba(255,255,255,.25);color:#fff;position:relative;z-index:1;
+  animation:pulse-live 1.8s ease-in-out infinite}
+@keyframes pulse-live{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(220,38,38,.5)}50%{opacity:.92;box-shadow:0 0 0 8px rgba(220,38,38,0)}}
+.dx .hero h1{margin:10px 0 4px;font-size:21px;font-weight:700;line-height:1.2;position:relative;z-index:1}
+.dx .hero p{font-size:12px;opacity:.85;line-height:1.55;max-width:32em;position:relative;z-index:1}
+
+/* Player */
+.dx .player-wrap{position:relative;border-radius:16px;overflow:hidden;background:#000;
+  border:1px solid var(--lx);box-shadow:0 8px 28px -10px rgba(0,0,0,.45);aspect-ratio:16/9}
+.dx .player-wrap video{width:100%;height:100%;display:block;background:#000;object-fit:contain}
+.dx .player-wrap .overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:linear-gradient(180deg,rgba(6,30,22,.7),rgba(6,30,22,.92));color:#fff;gap:10px;z-index:2;transition:opacity .3s}
+.dx .player-wrap .overlay.hide{opacity:0;pointer-events:none}
+.dx .player-wrap .overlay .ico{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.12);
+  display:grid;place-items:center;border:1px solid rgba(255,255,255,.2)}
+.dx .player-wrap .overlay b{font-size:14px;font-weight:700}
+.dx .player-wrap .overlay span{font-size:11px;opacity:.7;max-width:18em;text-align:center;line-height:1.45}
+.dx .player-wrap .live-tag{position:absolute;top:10px;left:10px;z-index:3;display:inline-flex;align-items:center;gap:5px;
+  background:rgba(220,38,38,.92);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:6px;
+  letter-spacing:.3px}
+.dx .player-wrap .live-tag::before{content:"";width:6px;height:6px;border-radius:50%;background:#fff;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.dx .player-wrap .ch-name{position:absolute;bottom:10px;left:10px;right:10px;z-index:3;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(8px);color:#fff;font-size:11.5px;font-weight:600;
+  padding:6px 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dx .player-wrap .ch-name small{font-size:10px;opacity:.7;font-weight:500}
+
+/* Channel cards */
+.dx .sec{display:flex;align-items:center;justify-content:space-between;margin:2px 2px -4px}
+.dx .sec h3{margin:0;font-size:13.5px;font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:8px}
+.dx .sec h3::before{content:"";width:3px;height:14px;border-radius:3px;background:linear-gradient(var(--gx),var(--gold))}
+.dx .ch-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(min-width:520px){.dx .ch-grid{grid-template-columns:repeat(4,1fr)}}
+.dx .ch{display:flex;flex-direction:column;gap:8px;text-align:left;background:var(--cx);border:1.5px solid var(--lx);
+  border-radius:14px;padding:12px 11px;cursor:pointer;transition:all .2s var(--ease);position:relative;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 16px -10px rgba(0,0,0,.18);color:inherit;font:inherit}
+.dx .ch:hover{border-color:color-mix(in srgb,var(--gx) 50%,var(--lx));transform:translateY(-1px)}
+.dx .ch:active{transform:scale(.98)}
+.dx .ch.on{border-color:var(--gx);background:color-mix(in srgb,var(--gx) 8%,var(--cx));
+  box-shadow:0 0 0 1px var(--gx),0 8px 20px -10px color-mix(in srgb,var(--gx) 40%,transparent)}
+.dx .ch .ico{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-size:16px;
+  background:color-mix(in srgb,var(--gx) 12%,transparent);color:var(--gx)}
+.dx .ch.on .ico{background:var(--gx);color:#fff}
+.dx .ch b{font-size:12px;font-weight:700;line-height:1.25;display:block}
+.dx .ch span{font-size:10px;opacity:.65;line-height:1.35;display:block;margin-top:1px}
+.dx .ch .dot{position:absolute;top:10px;right:10px;width:7px;height:7px;border-radius:50%;background:var(--mut-2);opacity:.5}
+.dx .ch.on .dot{background:#dc2626;opacity:1;box-shadow:0 0 0 3px rgba(220,38,38,.25);animation:blink 1.2s infinite}
+
+/* Tips */
+.dx .tips{background:var(--cx);border:1px solid var(--lx);border-radius:14px;padding:12px 14px;
+  box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.dx .tips b{font-size:12px;display:block;margin-bottom:6px}
+.dx .tips ul{margin:0;padding-left:16px;font-size:11px;opacity:.75;line-height:1.6}
+</style>
+
+<div class="dx">
+  <div class="hero">
+    <span class="badge">● LIVE</span>
+    <h1>Live TV — Makkah & Qurani</h1>
+    <p>Tazama moja kwa moja Quran TV, Makkah Live, Sunnah TV na channel zaidi. Bure kabisa, 24/7.</p>
+  </div>
+
+  <div class="player-wrap" id="playerWrap">
+    <div class="live-tag">LIVE</div>
+    <video id="vplayer" playsinline controls controlslist="nodownload"></video>
+    <div class="overlay" id="overlay">
+      <div class="ico">{{ icon('play',22) }}</div>
+      <b>Chagua channel hapa chini</b>
+      <span>Gusa card yoyote ili kuanza kutazama live stream</span>
+    </div>
+    <div class="ch-name" id="chLabel" style="display:none">
+      <span id="chTitle">—</span>
+      <small id="chSub">—</small>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h3>Channels 4</h3>
+  </div>
+
+  <div class="ch-grid" id="chGrid">
+    <button type="button" class="ch" data-src="http://m.live.net.sa:1935/live/quran/playlist.m3u8" data-title="Quran TV Live" data-sub="Al Quran Al Kareem · Makkah">
+      <div class="ico">📖</div>
+      <div>
+        <b>Quran TV Live</b>
+        <span>Qurani pale Makkah · IPTV rasmi</span>
+      </div>
+      <span class="dot"></span>
+    </button>
+
+    <button type="button" class="ch" data-src="http://m.live.net.sa:1935/live/sunnah/playlist.m3u8" data-title="Makkah & Madinah Live" data-sub="Al Sunnah Al Nabawiyah TV">
+      <div class="ico">🕋</div>
+      <div>
+        <b>Makkah Live</b>
+        <span>Masjid al-Haram & Nabawi</span>
+      </div>
+      <span class="dot"></span>
+    </button>
+
+    <button type="button" class="ch" data-src="https://playlist.fasttvcdn.com/pl/dlkqw1ftuvuuzkcb4pxdcg/Iqraafasttv2/playlist.m3u8" data-title="Iqraa Quran" data-sub="Live Qurani & Tafsiri">
+      <div class="ico">🕌</div>
+      <div>
+        <b>Qurani Tafsiri</b>
+        <span>Iqraa · Tilawa & maelezo</span>
+      </div>
+      <span class="dot"></span>
+    </button>
+
+    <button type="button" class="ch" data-src="https://live.kwikmotion.com/sbrksaquranradiolive/srpksaquranradio/playlist.m3u8" data-title="Quran Radio Live" data-sub="Sauti ya Qurani 24/7">
+      <div class="ico">🎙️</div>
+      <div>
+        <b>Quran Radio</b>
+        <span>Sauti safi · 24 masaa</span>
+      </div>
+      <span class="dot"></span>
+    </button>
+  </div>
+
+  <div class="tips">
+    <b>💡 Vidokezo</b>
+    <ul>
+      <li>Tumia Wi-Fi au data imara kwa ubora bora.</li>
+      <li>Kama stream haichezi, jaribu channel nyingine — baadhi hutegemea eneo.</li>
+      <li>Unaweza kubadilisha channel wakati wowote bila kuacha ukurasa.</li>
+    </ul>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+<script>
+(function(){
+  const video = document.getElementById('vplayer');
+  const overlay = document.getElementById('overlay');
+  const chLabel = document.getElementById('chLabel');
+  const chTitle = document.getElementById('chTitle');
+  const chSub = document.getElementById('chSub');
+  const cards = [...document.querySelectorAll('#chGrid .ch')];
+  let hls = null;
+  let current = null;
+
+  function stop(){
+    if(hls){ hls.destroy(); hls = null; }
+    video.removeAttribute('src');
+    video.load();
+  }
+
+  function play(src, title, sub){
+    stop();
+    overlay.classList.add('hide');
+    chLabel.style.display = 'flex';
+    chTitle.textContent = title;
+    chSub.textContent = sub;
+    current = src;
+
+    if(Hls.isSupported()){
+      hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+      hls.loadSource(src);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(()=>{});
+      });
+      hls.on(Hls.Events.ERROR, (e, data) => {
+        if(data.fatal){
+          overlay.classList.remove('hide');
+          overlay.querySelector('b').textContent = 'Stream haipatikani sasa';
+          overlay.querySelector('span').textContent = 'Jaribu channel nyingine au rudi baadaye.';
+        }
+      });
+    } else if(video.canPlayType('application/vnd.apple.mpegurl')){
+      video.src = src;
+      video.addEventListener('loadedmetadata', () => video.play().catch(()=>{}), {once:true});
+    } else {
+      overlay.classList.remove('hide');
+      overlay.querySelector('b').textContent = 'Kivinjari hakitumii HLS';
+      overlay.querySelector('span').textContent = 'Tumia Chrome, Safari au Firefox ya hivi karibuni.';
+    }
+  }
+
+  cards.forEach(c => {
+    c.addEventListener('click', () => {
+      cards.forEach(x => x.classList.remove('on'));
+      c.classList.add('on');
+      play(c.dataset.src, c.dataset.title, c.dataset.sub);
+    });
+  });
+
+  // Auto-start first channel
+  if(cards[0]){
+    cards[0].classList.add('on');
+    play(cards[0].dataset.src, cards[0].dataset.title, cards[0].dataset.sub);
+  }
+})();
+</script>
+{% endblock %}
