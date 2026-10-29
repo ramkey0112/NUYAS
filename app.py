@@ -4,6 +4,12 @@ from flask import Flask, send_from_directory, render_template, request, redirect
 from markupsafe import Markup, escape
 from werkzeug.security import generate_password_hash, check_password_hash
 from supabase import create_client
+try:
+    from pywebpush import webpush, WebPushException
+except Exception:
+    webpush = None
+    WebPushException = Exception
+import json
 
 app = Flask(__name__)
 app.secret_key = os.environ["SECRET_KEY"]
@@ -22,6 +28,9 @@ SITE = E("SITE_URL", "")
 PAY_NUMBER = E("PAY_NUMBER", "")
 PAY_NAME = E("PAY_NAME", "")
 ADMINS = [x.strip().lower() for x in E("ADMIN_EMAILS", "").split(",") if x.strip()]
+VAPID_PUBLIC = E("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE = E("VAPID_PRIVATE_KEY", "")
+VAPID_EMAIL = E("VAPID_CLAIM_EMAIL", "mailto:admin@nuyas.app")
 NOW = lambda: dt.datetime.now(dt.timezone.utc)
 parse = lambda s: dt.datetime.fromisoformat(s.replace("Z", "+00:00")) if s else None
 
@@ -93,7 +102,7 @@ def admin_required(f):
 
 @app.context_processor
 def inject():
-    return {"user": current_user(), "PRICE": PRICE, "PAY_NUMBER": PAY_NUMBER, "PAY_NAME": PAY_NAME}
+    return {"user": current_user(), "PRICE": PRICE, "PAY_NUMBER": PAY_NUMBER, "PAY_NAME": PAY_NAME, "VAPID_PUBLIC": VAPID_PUBLIC}
 
 @app.route("/")
 def index():
@@ -623,7 +632,17 @@ def admin_add(u, kind):
             "swahili": f["swahili"],
             "source": f.get("source"),
         }).execute()
-        flash("Adhkar imeongezwa.")
+        try:
+            broadcast_push(
+                "Adhkar mpya",
+                f'{f["arabic"][:80]} — {(f.get("swahili") or "")[:120]}',
+                url="/dashboard",
+                kind="adhkar",
+                created_by=u["id"],
+            )
+        except Exception:
+            pass
+        flash("Adhkar imeongezwa. Arifa imetumwa.")
         return redirect(url_for("admin") + "#adhkar")
     elif kind == "course":
         db.table("courses").insert({"title": f["title"], "description": f.get("description")}).execute()
@@ -632,15 +651,26 @@ def admin_add(u, kind):
     elif kind == "lesson":
         body = f.get("body") or ""
         cid = int(f["course_id"])
-        db.table("lessons").insert({
+        ins = db.table("lessons").insert({
             "course_id": cid,
             "title": f["title"],
             "body": body,
             "audio_url": f.get("audio_url") or None,
             "position": int(f.get("position") or 1),
             "is_free": f.get("is_free") == "on",
-        }).execute()
-        flash("Somo limeongezwa.")
+        }).execute().data
+        lid = ins[0]["id"] if ins else None
+        try:
+            broadcast_push(
+                "Somo jipya",
+                f["title"],
+                url=f"/lesson/{lid}" if lid else "/courses",
+                kind="lesson",
+                created_by=u["id"],
+            )
+        except Exception:
+            pass
+        flash("Somo limeongezwa. Arifa imetumwa.")
         return redirect(url_for("admin_course", cid=cid))
     else:
         abort(400)
@@ -872,6 +902,115 @@ def admin_banner_delete(u, bid):
     db.table("banners").delete().eq("id", bid).execute()
     flash("Banner imefutwa.")
     return redirect(url_for("admin") + "#banner")
+
+
+# ---------- Web Push (hata browser ikiwa imefungwa) ----------
+def send_web_push(subscription, payload):
+    """Send one Web Push notification. Returns True on success."""
+    if not webpush or not VAPID_PRIVATE or not VAPID_PUBLIC:
+        return False
+    try:
+        webpush(
+            subscription_info={
+                "endpoint": subscription["endpoint"],
+                "keys": {"p256dh": subscription["p256dh"], "auth": subscription["auth"]},
+            },
+            data=json.dumps(payload, ensure_ascii=False),
+            vapid_private_key=VAPID_PRIVATE,
+            vapid_claims={"sub": VAPID_EMAIL},
+        )
+        return True
+    except WebPushException as e:
+        # Gone / unsubscribed — delete
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        if status in (404, 410):
+            try:
+                db.table("push_subscriptions").delete().eq("endpoint", subscription["endpoint"]).execute()
+            except Exception:
+                pass
+        return False
+    except Exception:
+        return False
+
+def broadcast_push(title, body, url="/", kind="broadcast", created_by=None):
+    """Save notification log and push to all subscribers."""
+    try:
+        db.table("notifications").insert({
+            "title": title[:120],
+            "body": body[:500],
+            "url": url,
+            "kind": kind,
+            "created_by": created_by,
+        }).execute()
+    except Exception:
+        pass
+    try:
+        subs = db.table("push_subscriptions").select("*").execute().data or []
+    except Exception:
+        subs = []
+    payload = {"title": title, "body": body, "url": url, "tag": kind}
+    ok = 0
+    for s in subs:
+        if send_web_push(s, payload):
+            ok += 1
+    return ok
+
+@app.route("/api/push/subscribe", methods=["POST"])
+@login_required
+def push_subscribe(u):
+    j = request.get_json(silent=True) or {}
+    endpoint = (j.get("endpoint") or "").strip()
+    keys = j.get("keys") or {}
+    p256dh = keys.get("p256dh") or ""
+    auth = keys.get("auth") or ""
+    if not endpoint or not p256dh or not auth:
+        return jsonify(ok=False, error="missing keys"), 400
+    try:
+        # upsert by endpoint
+        existing = db.table("push_subscriptions").select("id").eq("endpoint", endpoint).limit(1).execute().data
+        row = {
+            "user_id": u["id"],
+            "endpoint": endpoint,
+            "p256dh": p256dh,
+            "auth": auth,
+            "user_agent": (request.headers.get("User-Agent") or "")[:240],
+        }
+        if existing:
+            db.table("push_subscriptions").update(row).eq("id", existing[0]["id"]).execute()
+        else:
+            db.table("push_subscriptions").insert(row).execute()
+        return jsonify(ok=True)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)[:120]), 500
+
+@app.route("/api/push/unsubscribe", methods=["POST"])
+@login_required
+def push_unsubscribe(u):
+    j = request.get_json(silent=True) or {}
+    endpoint = (j.get("endpoint") or "").strip()
+    if endpoint:
+        try:
+            db.table("push_subscriptions").delete().eq("endpoint", endpoint).execute()
+        except Exception:
+            pass
+    return jsonify(ok=True)
+
+@app.route("/admin/broadcast", methods=["POST"])
+@admin_required
+def admin_broadcast(u):
+    title = (request.form.get("title") or "").strip()[:120] or "NUYAS"
+    # body can be HTML from editor — strip tags for push body, keep text
+    raw = request.form.get("body") or ""
+    import re as _re
+    text = _re.sub(r"<[^>]+>", " ", raw)
+    text = _re.sub(r"\s+", " ", text).strip()[:400]
+    url = (request.form.get("url") or "/dashboard").strip() or "/dashboard"
+    if not text:
+        flash("Andika ujumbe.")
+        return redirect(url_for("admin") + "#broadcast")
+    n = broadcast_push(title, text, url=url, kind="broadcast", created_by=u["id"])
+    flash(f"Arifa imetumwa kwa vifaa {n}.")
+    return redirect(url_for("admin") + "#broadcast")
 
 # ---------- PWA ----------
 @app.route("/sw.js")

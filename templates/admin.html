@@ -33,6 +33,7 @@
   <a href="#adhkar" data-sec="adhkar">Adhkar</a>
   <a href="#maswali" data-sec="maswali">Maswali</a>
   <a href="#banner" data-sec="banner">Banner</a>
+  <a href="#broadcast" data-sec="broadcast">Arifa</a>
 </div>
 
 {# ===== MALIPO ===== #}
@@ -221,6 +222,25 @@
   {% endfor %}
 </section>
 
+
+{# ===== BROADCAST / PUSH ===== #}
+<section class="adm-sec" id="sec-broadcast">
+  <h2>Tuma arifa (Push)</h2>
+  <p class="muted">Inafika hata mtu akifunga browser au PWA — kwenye kifaa chake.</p>
+  <form method="post" action="/admin/broadcast" class="card" id="bcForm">
+    <label>Kichwa</label>
+    <input name="title" placeholder="Mf. Somo jipya / Adhkar" required maxlength="120">
+    <label style="margin-top:10px;display:block;font-weight:600">Ujumbe</label>
+    <div id="bcEditor"></div>
+    <input type="hidden" name="body" id="bcBody">
+    <label style="margin-top:10px">Kiungo (ukibofya arifa)</label>
+    <input name="url" value="/dashboard" placeholder="/courses au /lesson/1">
+    <button type="submit" class="btn-sm btn-ok" style="margin-top:12px">{{ icon('bell',14) }} Tuma kwa wote</button>
+  </form>
+</section>
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+
 <script>
 (function(){
   const secs = document.querySelectorAll('.adm-sec');
@@ -232,7 +252,7 @@
   }
   navs.forEach(a => a.addEventListener('click', e => { e.preventDefault(); show(a.dataset.sec); }));
   const hash = (location.hash || '#malipo').slice(1);
-  show(['malipo','masomo','adhkar','maswali','banner'].includes(hash) ? hash : 'malipo');
+  show(['malipo','masomo','adhkar','maswali','banner','broadcast'].includes(hash) ? hash : 'malipo');
 
   function bindSearch(inputId, itemSel){
     const inp = document.getElementById(inputId);
@@ -249,6 +269,23 @@
   bindSearch('courseSearch', '.course-item');
   bindSearch('adhkarSearch', '.adhkar-item');
   bindSearch('qSearch', '.q-item');
+
+  const bcEd = document.getElementById('bcEditor');
+  if(bcEd && window.Quill){
+    const bq = new Quill('#bcEditor', {
+      theme: 'snow',
+      modules: { toolbar: [
+        ['bold','italic','underline'],
+        [{align:[]}],
+        [{list:'ordered'},{list:'bullet'}],
+        ['clean']
+      ]},
+      placeholder: 'Andika ujumbe… unaweza kuweka aya'
+    });
+    document.getElementById('bcForm')?.addEventListener('submit', function(){
+      document.getElementById('bcBody').value = bq.root.innerText || bq.getText();
+    });
+  }
 })();
 </script>
 {% endblock %}
